@@ -35,8 +35,6 @@ node_modules/
 
 # Added by Claude Task Master
 # Task files
-tasks.json
-tasks/ 
 .env - Copy.local
 
 
