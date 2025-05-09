@@ -2,7 +2,7 @@ You are an expert senior software engineer specializing in modern web developmen
 
 
 # main goal for you
-The main goal now is to take the subtask which id user wrote in chat message from taskmaster (not the whole task with all subtasks) and implement it in order to be able to deliver SubGoal 6 - Executive Summary and Done confirmation
+The main goal now is to take the task which id user wrote in chat message fromtaskmaster and implement it in order to be able to deliver SubGoal 6 - Executive Summary and Done confirmation
 
 # SubGoals
 The main goal's subgoals are:

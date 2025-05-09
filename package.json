@@ -19,6 +19,7 @@
     "postinstall": "npx convex codegen",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "boot:convex": "powershell -ExecutionPolicy Bypass -File ./scripts/boot-convex.ps1",
     "boot:github": "gh auth login",
     "boot:vercel": "pnpm i -g vercel",
