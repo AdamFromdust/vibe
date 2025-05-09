@@ -41,7 +41,7 @@ export async function POST(request: Request): Promise<NextResponse<SuccessRespon
         const userLocation = (location && typeof location === 'string' && location.trim() !== '') ? location.trim() : 'in a faraway land';
 
         // KIP-inspired prompt (as per task details, assuming PRD alignment)
-        const prompt = `Provide me with a visualization exercise, drawing inspiration from Katathym Imaginative Psychotherapy (KIP), designed to help a client visualize their desired goal, particularly one they currently perceive as unattainable. Begin the visualization by incorporating the client\'s current place of residence or physical location ${userLocation}. The desired goal is described below: \n${dreamText}`;
+        const prompt = `Provide me with a visualization exercise, drawing inspiration from Katathym Imaginative Psychotherapy (KIP), designed to help a client visualize their desired goal, particularly one they currently perceive as unattainable. Your output is the instruction to the user that he will read and imagine with it. Begin the visualization by incorporating the client\'s current place of residence or physical location ${userLocation}. The desired goal is described below: \n${dreamText}`;
 
         const response = await openai.chat.completions.create({
             model: 'gpt-4.1-mini', // As specified in task 3 details
