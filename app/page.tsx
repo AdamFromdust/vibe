@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { getUserLocation } from '@/lib/services/geolocation-service';
 import VisualizationDisplay from '@/components/magic-button/visualization-display';
+import { speakText, cancelSpeech } from '@/lib/textToSpeech';
 
 export default function MagicButtonPage() {
   const [dreamInput, setDreamInput] = useState('');
@@ -12,6 +13,12 @@ export default function MagicButtonPage() {
   const [visualizationText, setVisualizationText] = useState('');
   const [error, setError] = useState('');
   const [showVisualization, setShowVisualization] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      cancelSpeech();
+    };
+  }, []);
 
   const handleMagicButtonClick = async () => {
     if (!dreamInput.trim()) {
@@ -21,14 +28,12 @@ export default function MagicButtonPage() {
 
     setError('');
     setIsLoading(true);
-    setVisualizationText(''); // Clear previous visualization
-    setShowVisualization(false); // Hide previous visualization
+    setVisualizationText('');
+    setShowVisualization(false);
 
     try {
-      // Get user location
       const location = await getUserLocation();
 
-      // Call the backend API
       const response = await fetch('/api/magic-button/generate-visualization', {
         method: 'POST',
         headers: {
@@ -66,8 +71,15 @@ export default function MagicButtonPage() {
   };
 
   const handleStartVisualization = () => {
-    console.log('Start visualization button clicked. TTS to be implemented in Task 6.');
-    // Actual TTS logic will be part of Task 6
+    if (visualizationText) {
+      speakText(
+        visualizationText, 
+        () => { console.log('TTS finished.'); }, 
+        (event: SpeechSynthesisErrorEvent) => { console.error('TTS error during playback:', event); }
+      );
+    } else {
+      console.warn('No visualization text to speak.');
+    }
   };
 
   return (
@@ -117,6 +129,7 @@ export default function MagicButtonPage() {
               setDreamInput('');
               setError('');
               setVisualizationText('');
+              cancelSpeech();
             }}
           >
             Dream Again
