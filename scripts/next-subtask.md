@@ -31,9 +31,7 @@ Write how will you know the thing is implemented. Write what unit test, end to e
 - SubGoal 4.2:
 Save the instruction of what tests need to be implemented to "tests/instructions/unit-test/<subtask_id>_unit-test-instructions.md"
 - SubGoal 4.3: make sure to run:
-- -  ESLint (pnpm lint)
-- SubGoal 4.4: Always make it possible to test by user. If you created a new component or functionality and it is not implmeneted anywhere in the project where it can be tried then add it to /test/<reasonable_subroute_name_for_this_functionality> subroute, add the subroute to the sidebar
-## SubGoal 6 - Executive Summary and Done confirmation
+- -  ESLint (pnpm## SubGoal 6 - Executive Summary and Done confirmation
 - Write an executive summary (to chat) of everything that was done for the user.
 - save the executive summary into /ai/reports/implementation/<subtask_id>_implementation-report.md
 - wait for his feedback and additional instructions and confirmation to see if the task was done
