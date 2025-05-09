@@ -1,0 +1,73 @@
+---
+description: Convex Node Client: Verify path/export name (e.g., `convexNodeClient` from `lib/convex/serverClient.ts`) and use `api`/`internal` FunctionReferences when calling queries/mutations.
+globs: 
+alwaysApply: false
+---
+
+# Convex Node.js Client Usage
+
+## Description
+This rule outlines the correct procedure for importing and utilizing the Convex Node.js client, typically used in server-side contexts like Next.js Server Actions or API Routes, to interact with your Convex backend.
+
+## Problem: Import Errors
+Assuming the path or exported name of the Convex Node.js client often leads to `Module not found` errors or runtime issues. Common incorrect assumptions include `convexClient` as the export name or `client.ts` / `node-client.ts` as the filename.
+
+## Solution: Verify and Import Correctly
+
+1.  **Verify Location & Export:**
+    *   The Convex Node.js client configuration is usually located within the `lib/convex/` directory.
+    *   **Use tools like `list_dir`** or manually inspect files (e.g., `serverClient.ts`, `server.ts`) in `lib/convex/` to find the exact file containing the client export.
+    *   **Identify the correct exported name** (e.g., `convexNodeClient`, `convexServerClient`). Pay attention to linter suggestions if initial imports fail.
+
+2.  **Import the Client:**
+    *   Use the verified path and export name in your import statement.
+
+## Examples
+
+```typescript
+// ❌ DON'T: Assume path or export name
+// import { convexClient } from "@/lib/convex/client"; 
+// import { convexClient } from "@/lib/convex/node-client";
+// import { convexClient } from "@/lib/convex/serverClient";
+
+// ✅ DO: Verify path and export name first, then import
+// Example based on verification showing export 'convexNodeClient' in 'serverClient.ts'
+import { convexNodeClient } from "@/lib/convex/serverClient"; 
+```
+
+## Using the Client
+
+*   Once imported correctly, use the client object (`convexNodeClient` in the example above) to call your Convex functions (`query`, `mutation`).
+*   **Crucially:** Always call Convex functions using the `FunctionReference` obtained from the generated `api` or `internal` objects, **not** string paths.
+
+```typescript
+import { convexNodeClient } from "@/lib/convex/serverClient";
+import { internal, api } from "@/convex/_generated/api"; // Import references
+
+// ... inside an async function (e.g., Server Action)
+
+try {
+  // ❌ DON'T: Use string paths
+  // await convexNodeClient.mutation("internalTemplates.createTemplateInternal", { ... }); 
+  // await convexNodeClient.query("myPublicQuery", { ... });
+
+  // ✅ DO: Use FunctionReference from internal or api
+  const templateId = await convexNodeClient.mutation(internal.templates.createTemplateInternal, { 
+    userId: "...", 
+    name: "...", 
+    // ... other args
+  });
+
+  const results = await convexNodeClient.query(api.someModule.myPublicQuery, {
+    filter: "..."
+  });
+
+} catch (error) {
+  console.error("Convex operation failed:", error);
+}
+```
+
+## Related Rules
+*   See [200-database-convex/202-official-convex-rules.mdc](mdc:.cursor/rules/200-database-convex/202-official-convex-rules.mdc) for detailed guidelines on defining and calling Convex functions (`query`, `mutation`, `internalQuery`, etc.) and using validators.
+*   See [100-architecture/101-project-structure.mdc](mdc:.cursor/rules/100-architecture/101-project-structure.mdc) for standard project layout, including the location of Convex client configuration (`lib/convex/`).
+

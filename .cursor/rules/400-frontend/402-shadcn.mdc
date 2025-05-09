@@ -3,12 +3,18 @@ description:
 globs: *.tsx
 alwaysApply: false
 ---
- # shadcn Component Usage Guidelines
+\
+---
+description: Guidelines for using Shadcn UI components, including specific patterns.
+globs: ["**/components/ui/**/*.tsx", "**/app/**/*.tsx"]
+alwaysApply: true
+---
+
+# Shadcn Component Usage Guidelines
 
 ## Description
 Prefer to use shadcn/ui components rather creating your own.
-
-This rule documents our standard patterns for using shadcn/ui components and finding additional components built on top of shadcn.
+This rule documents our standard patterns for using shadcn/ui components, finding additional components, and handling common integration scenarios.
 
 ## Installation & Setup
 
@@ -16,13 +22,17 @@ This rule documents our standard patterns for using shadcn/ui components and fin
 Always use the shadcn CLI to add new components. This ensures proper installation with all dependencies:
 
 ```bash
-# Install a new component
-pnpm dlx shadcn@latest add <component-name>
+# Install a new component - ALWAYS use shadcn (NOT shadcn-ui which is deprecated)
+pnpm dlx shadcn@latest add <component-name> -y
 
 # Examples:
-pnpm dlx shadcn@latest add button
-pnpm dlx shadcn@latest add alert-dialog
+pnpm dlx shadcn@latest add button -y
+pnpm dlx shadcn@latest add alert-dialog -y
+pnpm dlx shadcn@latest add select -y
 ```
+
+> **IMPORTANT**: Always use the `shadcn` package, not the deprecated `shadcn-ui` package.
+> See [000-tooling/006-shadcn-package.mdc](mdc:.cursor/rules/000-tooling/006-shadcn-package.mdc) for details.
 
 ## Core Components
 
@@ -45,7 +55,7 @@ import { Input } from "@/components/ui/input"
 ## Extended Components
 
 ### Finding Additional Components
-When we need more specialized components that aren't in the core shadcn/ui library:
+When we need more specialized components that aren\'t in the core shadcn/ui library:
 
 1. First check the [awesome-shadcn-ui repository](mdc:https:/github.com/birobirobiro/awesome-shadcn-ui) for existing solutions
 2. Look for components that:
@@ -84,33 +94,158 @@ Some recommended extended components from the ecosystem:
    - Test thoroughly before integration
    - Keep track of dependencies
 
-## Examples
+## Common Patterns & Integrations
 
-### Basic Usage
+### Using `Select` with `react-hook-form` and Async Default Values
+
+When using the Shadcn `Select` component within a `react-hook-form` (`FormField`) and the default value needs to be loaded asynchronously (e.g., fetched user preference), a specific pattern is required to ensure the correct value is displayed initially.
+
+- **Problem:** If you only bind `value={field.value}` and rely on `useEffect` + `form.reset` to set the value after fetching, the `Select` might initially render empty or with the placeholder because `field.value` might be `undefined` during the first render(s).
+- **Solution:** Provide **both** the `value` prop (controlled by `react-hook-form`) and the `defaultValue` prop (using the fetched data) to the `Select` component.
+
 ```typescript
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+// Inside your component...
+import { useForm } from "react-hook-form";
+import { useQuery } from "convex/react"; // Or your data fetching hook
+import { api } from "@/convex/_generated/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-export function SearchForm() {
-  return (
-    <div className="flex gap-2">
-      <Input placeholder="Search..." />
-      <Button>Search</Button>
-    </div>
-  )
+// Define form schema, etc.
+// ...
+
+const DEFAULT_VALUE = "some-default-value";
+
+export function MyFormComponent() {
+    const fetchedData = useQuery(api.myModule.getMyData); // Async data fetch
+
+    const form = useForm<MyFormValues>({
+        // ... resolver
+        defaultValues: {
+            mySelectField: undefined, // Initialize as undefined
+        },
+    });
+
+    // Effect to reset form state once data is loaded
+    useEffect(() => {
+        if (fetchedData !== undefined) {
+            form.reset({
+                mySelectField: fetchedData?.preference ?? DEFAULT_VALUE,
+            });
+        }
+    }, [fetchedData, form]);
+
+    // ... onSubmit handler
+
+    const isLoading = fetchedData === undefined;
+
+    if (isLoading) {
+        return <p>Loading...</p>;
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                    control={form.control}
+                    name="mySelectField"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>My Preference</FormLabel>
+                            {/* ✅ DO: Use both value and defaultValue */}
+                            <Select
+                                onValueChange={field.onChange}
+                                value={field.value ?? DEFAULT_VALUE} // Controlled by RHF state
+                                defaultValue={fetchedData?.preference ?? DEFAULT_VALUE} // Provides initial hint
+                            >
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an option" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {/* ... SelectItem options ... */}
+                                    <SelectItem value="option-1">Option 1</SelectItem>
+                                    <SelectItem value="option-2">Option 2</SelectItem>
+                                    <SelectItem value="some-default-value">Default Option</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                {/* ... other fields, submit button */}
+            </form>
+        </Form>
+    );
 }
 ```
 
-### Extended Component Integration
-```typescript
-import { DatePicker } from "@/components/ui/date-picker"
-import { Button } from "@/components/ui/button"
+- **Explanation:**
+    - `value={field.value ?? DEFAULT_VALUE}`: Keeps the `Select` controlled by `react-hook-form`. The fallback `?? DEFAULT_VALUE` handles cases where the form state might be temporarily `undefined`.
+    - `defaultValue={fetchedData?.preference ?? DEFAULT_VALUE}`: Gives the Shadcn `Select` component the initial value it should display immediately on render, using the fetched data directly (or the fallback). This prevents the placeholder from showing incorrectly while waiting for the `useEffect` and `form.reset` to fully update `field.value`.
 
-export function DateSelection() {
-  return (
-    <div className="space-y-2">
-      <DatePicker />
-      <Button>Confirm Date</Button>
-    </div>
-  )
-}
+### Notifications / Toasts (Using Sonner)
+
+**Important:** The original Shadcn `toast` component (using `useToast` hook) is **deprecated**. Always use `Sonner` for notifications.
+
+1.  **Installation:**
+    ```bash
+    # Install Sonner using the shadcn CLI
+    pnpm dlx shadcn@latest add sonner -y
+    ```
+    This will add/update `components/ui/sonner.tsx`.
+
+2.  **Add Toaster to Layout:**
+    Ensure the `<Toaster />` component is included in your root layout (`app/layout.tsx`), typically inside your `ThemeProvider` or main body tag.
+    ```typescript
+    // app/layout.tsx
+    import { Toaster } from "@/components/ui/sonner" // Or directly from "sonner" if preferred
+    // ... other imports
+
+    export default function RootLayout({ children }: { children: React.ReactNode }) {
+      return (
+        <html lang="en" suppressHydrationWarning>
+          <body>
+            {/* ... other providers/components ... */}
+            {children}
+            <Toaster position="top-center" /> {/* Or your preferred position */}
+          </body>
+        </html>
+      )
+    }
+    ```
+
+3.  **Usage in Client Components:**
+    Import the `toast` function directly from the `sonner` library and call its methods.
+
+    ```typescript
+    // YourClientComponent.tsx
+    "use client";
+    import { toast } from "sonner";
+    import { Button } from "@/components/ui/button";
+
+    export function MyComponent() {
+      const showSuccess = () => {
+        toast.success("Success", {
+          description: "Your action was completed successfully.",
+          // duration: 5000, // Optional duration
+        });
+      };
+
+      const showError = () => {
+        toast.error("Error", {
+          description: "Something went wrong.",
+        });
+      };
+
+      return (
+        <div>
+          <Button onClick={showSuccess}>Show Success</Button>
+          <Button onClick={showError} variant="destructive">Show Error</Button>
+        </div>
+      );
+    }
+    ```
+
+    *   **❌ DON'T:** Do not use `useToast` from `@/components/ui/use-toast` as it belongs to the deprecated component.

@@ -1,0 +1,174 @@
+---
+description: Defines the standard secure pattern for using Next.js Server Actions with Clerk authentication and Convex functions, emphasizing layered security and explicit userId passing to prevent race conditions and ensure proper authorization
+globs: 
+alwaysApply: false
+---
+---
+description: Defines the standard secure pattern for using Next.js Server Actions with Clerk authentication and Convex functions, emphasizing layered security and explicit userId passing to prevent race conditions and ensure proper authorization
+globs: app/_actions/**/*.ts, app/actions/**/*.ts, convex/**/*.ts
+---
+
+# Best Practices: Server Actions + Clerk + Convex
+
+This rule outlines the standard pattern for secure client-server interaction and data modification when using Next.js Server Actions with Clerk authentication and Convex as the backend database. Adhering to this pattern prevents common race conditions and ensures proper authentication and authorization checks occur.
+
+## Core Principle: Layered Security
+
+Implement security at multiple levels. Do not rely solely on client-side checks or server-action-level authentication.
+
+1.  **Server Action Authentication (Clerk `auth()`):**
+    -   **Purpose:** Verify that the user initiating the request from the client has an active, valid session.
+    -   **Implementation:** Always start Server Actions (`/app/_actions/` or `/app/actions/`) that perform sensitive operations with `const { userId } = await auth();` from `@clerk/nextjs/server`. Check if `userId` is present before proceeding.
+    -   **Role:** Acts as the first gatekeeper, ensuring only logged-in users can trigger backend logic.
+
+2.  **Convex Function Authorization (Argument-Based):**
+    -   **Purpose:** Verify that the *specific authenticated user* (identified by the `userId` passed from the Server Action) has the necessary permissions to access or modify the *specific data* requested within Convex.
+    -   **Implementation:** Convex functions (`query`, `mutation`, `action`, `internal*`) called by Server Actions **MUST** accept the `userId` (or equivalent identifier) as an argument. They **MUST NOT** rely on `await ctx.auth.getUserIdentity()` for authorization when called via `convexNodeClient`. Instead, fetch the relevant Convex document(s) and compare the document's ownership/permission fields against the `args.userId`.
+    -   **Role:** Acts as the final security check at the data layer, ensuring data integrity and preventing unauthorized access/modification, even if the initial request came from an authenticated user.
+
+## Standard Interaction Flow
+
+```mermaid
+sequenceDiagram
+    participant Client Component (Browser)
+    participant Server Action (Next.js Server)
+    participant Convex Function (Convex Backend)
+    participant Clerk
+    participant Convex DB
+
+    Client Component (Browser)->>Server Action (Next.js Server): Call action(args)
+    Server Action (Next.js Server)->>Clerk: await auth()
+    Clerk-->>Server Action (Next.js Server): { userId } or throws/null
+    alt User Authenticated
+        Server Action (Next.js Server)->>Convex Function (Convex Backend): convexNodeClient.mutation/query(api/internal..., {..., userId})
+        Convex Function (Convex Backend)->>Convex DB: Fetch document(s)
+        Convex DB-->>Convex Function (Convex Backend): Return document(s)
+        Note right of Convex Function (Convex Backend): Authorize: Check if args.userId owns/can access document
+        alt User Authorized for Data
+            Convex Function (Convex Backend)->>Convex DB: Perform mutation/query
+            Convex DB-->>Convex Function (Convex Backend): DB Result
+            Convex Function (Convex Backend)-->>Server Action (Next.js Server): Success/Data
+            Server Action (Next.js Server)-->>Client Component (Browser): Success/Data
+        else User Not Authorized for Data
+            Convex Function (Convex Backend)-->>Server Action (Next.js Server): Throw Error("Unauthorized")
+            Server Action (Next.js Server)-->>Client Component (Browser): Error
+        end
+    else User Not Authenticated
+         Server Action (Next.js Server)-->>Client Component (Browser): Error("Unauthorized")
+    end
+
+```
+
+## Implementation Details
+
+-   **Server Actions as Gatekeepers:** Client Components requiring authenticated data fetching or mutations **MUST** call Server Actions defined in `/app/_actions/` or `/app/actions/`.
+-   **`convexNodeClient`:** Server Actions **MUST** use the `convexNodeClient` (from `lib/convex/serverClient.ts` or similar) to interact with Convex functions.
+-   **Pass `userId` Explicitly:** Server Actions **MUST** pass the `userId` obtained from `auth()` as an argument to the Convex function they call.
+-   **Convex Function Design:**
+    -   Functions called by Server Actions **MUST** accept the `userId` in their `args`.
+    -   These functions **MUST NOT** use `await ctx.auth.getUserIdentity()` for authorization checks.
+    -   Perform authorization by comparing `args.userId` against data fetched from `ctx.db`.
+-   **`internal` Functions:** For highly sensitive operations (e.g., hard deletes, critical admin tasks) that should *never* be exposed publicly, define them using `internalMutation` or `internalAction` in Convex. These can only be called by other Convex functions or the `convexNodeClient` from your trusted Server Actions, adding a layer of isolation.
+-   **Avoid Direct Client Calls:** Client components **MUST NOT** directly call Convex functions (using `useQuery`, `useMutation`, etc.) if that Convex function relies on `ctx.auth.getUserIdentity()` for authentication/authorization. This avoids race conditions and ensures the robust server-side authentication flow is used. Use Server Actions instead.
+
+## Examples
+
+### ✅ DO: Secure Pattern
+
+```typescript
+// app/_actions/secure-data-action.ts
+'use server';
+import { auth } from "@clerk/nextjs/server";
+import { convexNodeClient } from "@/lib/convex/serverClient";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+
+export async function getSecureData(recordId: Id<"myTable">) {
+  // 1. Authenticate in Server Action
+  const { userId } = await auth();
+  if (!userId) { throw new Error("Unauthorized"); }
+
+  // 2. Call Convex Query via Node client, passing userId
+  const result = await convexNodeClient.query(api.myModule.getDataForServer, {
+      recordId: recordId,
+      userId: userId // Pass authenticated userId
+  });
+  return result;
+}
+
+// convex/myModule.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
+
+export const getDataForServer = query({
+  args: {
+    recordId: v.id("myTable"),
+    userId: v.string() // Accept userId from Server Action
+  },
+  // returns: ... validator matching return structure ...
+  handler: async (ctx, args) => {
+    // 3. Authorize within Convex based on passed userId
+    // DON'T use ctx.auth here!
+    const record = await ctx.db.get(args.recordId);
+    if (!record) { throw new Error("Not found"); }
+    if (record.ownerId !== args.userId) { // Check ownership using args.userId
+        throw new Error("Not authorized");
+    }
+    return record; // Return data
+  }
+});
+```
+
+### ❌ DON'T: Direct Client Call to Authed Query
+
+```typescript
+// ClientComponent.tsx
+'use client';
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+// ...
+// PROBLEM: Direct call to a query that likely uses ctx.auth internally
+// This is prone to race conditions on initial load.
+const data = useQuery(api.myModule.getDataWithAuthCheck, { recordId: someId });
+// ...
+
+// convex/myModule.ts
+// export const getDataWithAuthCheck = query({ // This function uses ctx.auth
+//   args: { recordId: v.id("myTable") },
+//   handler: async (ctx, args) => {
+//     const identity = await ctx.auth.getUserIdentity(); // Prone to client-side race condition
+//     if (!identity) { throw new Error("User must be authenticated."); }
+//     // ... rest of logic ...
+//   }
+// });
+```
+
+### ❌ DON'T: Missing Authorization in Convex Function
+
+```typescript
+// app/_actions/insecure-action.ts
+// ... auth() check is done correctly ...
+// const result = await convexNodeClient.mutation(api.myModule.updateDataNoAuthCheck, {
+//     recordId: recordId,
+//     userId: userId, // userId is passed correctly
+//     newData: "..."
+// });
+// ...
+
+// convex/myModule.ts
+// export const updateDataNoAuthCheck = mutation({
+//   args: { recordId: v.id("myTable"), userId: v.string(), newData: v.string() },
+//   handler: async (ctx, args) => {
+//     // PROBLEM: No check if args.userId actually owns args.recordId!
+//     await ctx.db.patch(args.recordId, { data: args.newData }); // Updates blindly!
+//     // This allows any authenticated user to update any record if they know the ID.
+//   }
+// });
+```
+
+## Related Rules
+
+-   [100-architecture/101-project-structure.mdc](mdc:.cursor/rules/100-architecture/101-project-structure.mdc) (Overall Structure and Convex+Clerk Overview)
+-   [300-auth/301-clerk-patterns.mdc](mdc:.cursor/rules/300-auth/301-clerk-patterns.mdc) (General Clerk Patterns)
+

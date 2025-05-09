@@ -1,12 +1,18 @@
 ---
-description: 
+description: When adding console logs for debugging, always use `JSON.stringify` with pretty print (spacing) when logging objects. This makes logs easier to read and copy/paste, especially for complex or nested data.
 globs: 
 alwaysApply: false
 ---
+---
+description: When adding console logs for debugging, always use `JSON.stringify` with pretty print (spacing) when logging objects. This makes logs easier to read and copy/paste, especially for complex or nested data.
+globs: **/*
+alwaysApply: true
+---
+
 # Console Logging Best Practices
 
 ## Description
-When adding console logs for debugging, always use `JSON.stringify` with pretty print (spacing) when logging objects. This makes logs easier to read and copy/paste, especially for complex or nested data.
+
 
 ## Guidelines
 - Use `console.log(JSON.stringify(obj, null, 2))` when logging objects or arrays.

@@ -3,4 +3,11 @@ description: When using openai api.
 globs: 
 alwaysApply: false
 ---
+\
+---
+description: OpenAI: Preferred model is "gpt-4.1-nano"
+alwaysApply: true
+---
+
+
 The preferred model for openai is "gpt-4.1-nano"

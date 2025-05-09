@@ -1,0 +1,14 @@
+---
+description: Troubleshooting: Restart dev server if 'Module not found' errors occur after adding new files.
+globs: 
+alwaysApply: false
+---
+- **Restart Dev Server After Adding/Creating Files**
+  - **Problem:** Sometimes, after adding a new component (e.g., via `pnpm dlx shadcn@latest add ...`) or manually creating a new `.ts`/`.tsx` file and immediately importing it elsewhere, the development server (Next.js, Vite, etc.) might not recognize the new file instantly.
+  - **Symptom:** This can lead to `Module not found` errors or linter errors complaining about unresolved imports, even if the file exists and the import path (`@/components/...`, `../lib/...`, etc.) appears correct.
+  - **Solution:** If you encounter these errors right after adding or creating a file, and you've double-checked the import path, **try restarting your development server** (e.g., stop the `pnpm dev` process and start it again).
+  - **Scenarios:** This is common when:
+    - Using CLIs like `shadcn` to add UI components.
+    - Creating new React components, utility functions, or type definition files.
+    - Modifying `tsconfig.json` or other build configuration files.
+

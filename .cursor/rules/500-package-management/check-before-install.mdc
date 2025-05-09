@@ -1,0 +1,8 @@
+---
+description: When installing new packages with npm, pnpm or other
+globs:
+alwaysApply: false
+---
+
+
+Always first check whether the package is not yet installed before installing it

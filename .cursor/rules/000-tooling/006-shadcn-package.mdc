@@ -1,0 +1,56 @@
+---
+description: Rule for using the correct shadcn package
+globs: *.ts, *.tsx, *.json
+alwaysApply: true
+---
+# Shadcn Package Installation Rule
+
+## Description
+The `shadcn-ui` package has been deprecated. Always use the `shadcn` package instead.
+
+## Installation Commands
+
+### ✅ DO: Use the `shadcn` package
+Always use the `shadcn` package with the latest tag when installing or adding components:
+
+```bash
+# Install a component - CORRECT WAY
+pnpm dlx shadcn@latest add <component-name> -y
+
+# Examples:
+pnpm dlx shadcn@latest add button -y
+pnpm dlx shadcn@latest add card -y
+pnpm dlx shadcn@latest add dialog -y
+```
+
+### ❌ DON'T: Use the deprecated `shadcn-ui` package
+Never use the deprecated `shadcn-ui` package. It will cause errors and warnings:
+
+```bash
+# WRONG - will show deprecation error
+pnpm dlx shadcn-ui@latest add button
+
+# WRONG - still uses the deprecated package
+npx shadcn-ui@latest add button
+```
+
+## Component Imports
+The imports remain the same regardless of which package you use for installation:
+
+```typescript
+// Import components from the local UI directory
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+```
+
+## Error Handling
+
+If you encounter a deprecation error:
+
+1. Cancel the installation command
+2. Run the correct command using `shadcn` instead
+3. If you've already attempted an installation with `shadcn-ui`, check for any partially installed files in `components/ui/` and remove them if needed
+4. Run the correct `pnpm dlx shadcn@latest add` command to properly install the components
+
+## Related Rules
+See also [400-frontend/402-shadcn.mdc](mdc:.cursor/rules/400-frontend/402-shadcn.mdc) for general shadcn component usage guidelines.

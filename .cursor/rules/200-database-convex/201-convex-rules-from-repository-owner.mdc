@@ -1,8 +1,9 @@
 ---
-description: 
+description: Convex Implementation Guide: Setup, directory structure, schema, functions, services, server actions, and best practices.
 globs: 
 alwaysApply: false
 ---
+
 # Convex Implementation Guide
 
 ## Setup & Configuration

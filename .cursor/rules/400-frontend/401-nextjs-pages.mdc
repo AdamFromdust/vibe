@@ -1,59 +1,107 @@
 ---
 description: Next.js: How to handle page props and async params/searchParams in Next.js 14
-globs: **/app/**/page.tsx, **/app/**/layout.tsx
+globs: 
 alwaysApply: false
+---
+---
+description: Next.js: How to handle page props and async params/searchParams in Next.js 14
+globs: app/**/page.tsx, app/**/layout.tsx
 ---
 
 # Next.js Page Props Rule
 
 ## Description
-This rule defines how to handle page props in Next.js components, particularly for pages that receive params or searchParams.
+This rule defines how to handle page props in Next.js components, particularly for pages that receive route `params` or `searchParams`.
 
 ## Rule Details
-1. Page props should be typed with Promise for params and searchParams
-2. The main page component should be async
-3. Params should be awaited at the start of the component
-4. Client-side state management should be moved to a separate client component
+1. **Async Component:** The main page/layout component receiving `params` or `searchParams` MUST be `async`.
+2. **Promise Props:** Page props should be typed with `Promise` for `params` and `searchParams` (if applicable).
+   - The type inside the `params` promise should be an object where keys match the dynamic route segments (e.g., `slug` for `[slug]`) and values are `string`. Example: `params: Promise<{ slug: string; category: string; }>` for `/[category]/[slug]/page.tsx`.
+   - The type inside the `searchParams` promise should be an object with optional `string` values. Example: `searchParams: Promise<{ query?: string; sort?: string; }>`.
+3. **Await Props:** Inside the `async` component, the `params` and `searchParams` objects themselves MUST be explicitly `await`ed *before* destructuring or accessing their properties.
+4. **Destructure After Await:** Destructure the required values *after* awaiting the relevant prop object.
+5. **Type Casting for IDs:** When passing a destructured route parameter (which will be a `string`) to functions or components expecting a specific branded ID type (like Convex's `Id<"tableName">`), you MUST cast the string variable: `variable as Id<"tableName">`.
+6. **Client Components:** Any client-side state management or hooks (`useState`, `useEffect`, etc.) should be moved to a separate client component (`"use client";`) imported into the `async` server page component.
 
 ### Example:
 
 ```typescript
+import { type Id } from "@/convex/_generated/dataModel"; // Example Convex ID import
+
+// Define the props interface following the rules
 interface PageProps {
-  params: Promise<{
-    slug: string
-  }>,
-  searchParams?: Promise<{
-    query?: string
-  }>
+  params: Promise<{ slug: string }>; // slug matches [slug] segment, value is string
+  searchParams?: Promise<{ query?: string }>; // Optional searchParams
 }
 
+// 1. Component is async
 export default async function Page({ params, searchParams }: PageProps) {
-  const { slug } = await params
-  const { query } = await searchParams || {}
+  // 3. Await props BEFORE accessing
+  const awaitedParams = await params;
+  const awaitedSearchParams = await searchParams; // Await optional ones too
 
-  // Server-side data fetching here
-  const data = await getData(slug)
+  // 4. Destructure AFTER awaiting
+  const { slug } = awaitedParams; // slug is a string here
+  const { query } = awaitedSearchParams || {}; // query is string | undefined
 
+  // 5. Type Casting Example (if passing slug to a function expecting Id<"posts">)
+  // const postData = await getPost(slug as Id<"posts">);
+
+  // Server-side data fetching using destructured params
+  // const data = await getData(slug);
+
+  // 6. Pass data to Client Component
   return (
-    <ClientComponent data={data} />
-  )
+    // <ClientComponent data={data} slugId={slug as Id<"posts">} />
+    <div>Server Page Content for {slug}</div> // Example usage
+  );
 }
 
+// Example Client Component (in a separate file)
+/*
 'use client'
-function ClientComponent({ data }: { data: Data }) {
+import { type Id } from "@/convex/_generated/dataModel";
+// ...
+function ClientComponent({ data, slugId }: { data: Data, slugId: Id<"posts"> }) {
   // Client-side state management here
-  const [state, setState] = useState()
-  
+  const [state, setState] = useState();
+  // Use slugId which is already cast
+
   return (
     // JSX
   )
 }
+*/
+```
+
+### Anti-Patterns:
+
+```typescript
+// ❌ DON'T: Forget async keyword
+// export default function Page({ params }: PageProps) { ... }
+
+// ❌ DON'T: Type params/searchParams as plain objects
+// interface PageProps { params: { slug: string }; }
+
+// ❌ DON'T: Access properties directly from the prop object before awaiting
+// const { slug } = params; // Incorrect - params is a Promise
+// const { query } = searchParams || {}; // Incorrect - searchParams is a Promise
+
+// ❌ DON'T: Forget to cast string params to branded ID types when needed
+// await someConvexAction(slug); // Incorrect if action expects Id<"someTable">
 ```
 
 ## When to Use
-- When creating new Next.js pages that receive params or searchParams
-- When updating existing pages to handle async props correctly
-- When splitting components between server and client responsibilities
+- When creating new Next.js pages or layouts in the App Router (`app/`) that receive route parameters (`params`) or search parameters (`searchParams`).
+- When updating existing App Router pages to align with Next.js 14+ async component patterns.
+- When refactoring pages to correctly separate server-side data fetching/logic from client-side interactivity.
 
 ## Why This Rule Exists
-Next.js 14 introduces a new pattern for handling page props where params and searchParams are promises that need to be awaited. This rule ensures consistent handling of these props across the application and proper separation of server and client components. 
+Next.js 14+ introduces a pattern for handling page props in `async` Server Components where `params` and `searchParams` are promises that need resolution. This rule ensures:
+- Consistent and correct handling of these asynchronous props.
+- Proper type safety for route parameters and search parameters.
+- Correct interaction with systems expecting specific ID types (like Convex).
+- Clear separation of server and client rendering responsibilities.
+
+## Related Notes
+- When assigning results from data fetching (e.g., Convex queries) to variables, ensure the variable's type matches the *actual* data structure returned, considering any specific `returns` validators on queries which might differ from the base `Doc<"tableName">` type. 

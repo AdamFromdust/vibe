@@ -1,0 +1,66 @@
+---
+description: Convex Env Vars: Access `process.env` only inside handlers; instantiate clients needing env vars inside handlers, not at top level.
+globs: convex/**/*.ts
+alwaysApply: false
+---
+
+# Convex Env Variables & Client Instantiation
+
+- **Environment Variable Access:**
+  - Environment variables (from `.env.local` or Convex Dashboard) are available via `process.env.MY_VAR` **only within function handlers** (`query`, `mutation`, `action`).
+  - They are **NOT** reliably available during the module analysis phase (top-level code execution when `convex dev` starts or deploys).
+
+- **Client Instantiation (Critical):**
+  - **✅ DO:** Instantiate clients (like `OpenAI`, database clients, etc.) that require environment variables (e.g., API keys) *inside* the specific `handler` function where they are used.
+    ```typescript
+    // convex/myActions.ts
+    import { action } from "./_generated/server";
+    // DO NOT import or instantiate client at top level if it needs env vars
+
+    export const doSomethingWithApi = action({
+      args: { /* ... */ },
+      handler: async (ctx, args) => {
+        // ✅ Instantiate client INSIDE the handler
+        const { SomeApiClient } = await import("some-api-library");
+        const client = new SomeApiClient({
+          // Reads process.env.* at execution time
+          apiKey: process.env.SOME_API_KEY 
+        });
+        
+        // Use the client
+        const result = await client.callApi(args);
+        return result;
+      }
+    });
+    ```
+
+  - **❌ DON'T:** Instantiate clients requiring environment variables at the top level of a Convex module file. This will likely cause errors during `convex dev` startup or deployment (`InvalidModules` error mentioning the missing variable) because the variable isn't available during module analysis.
+    ```typescript
+    // convex/myActions.ts
+    import { action } from "./_generated/server";
+    import { SomeApiClient } from "some-api-library";
+
+    // ❌ DON'T DO THIS:
+    // Instantiating here tries to access process.env.SOME_API_KEY
+    // during module analysis, which will fail.
+    // const client = new SomeApiClient({ apiKey: process.env.SOME_API_KEY });
+
+    export const doSomethingWithApi = action({
+      args: { /* ... */ },
+      handler: async (ctx, args) => {
+        // Client needed here, but instantiated incorrectly above
+        // const result = await client.callApi(args);
+        // return result;
+      }
+    });
+    ```
+
+- **Troubleshooting Missing Variables:**
+  - If you get runtime errors about missing environment variables (e.g., `API_KEY missing`):
+    1. Verify the variable name and value are correct in `.env.local` (for local dev) AND/OR the Convex Dashboard (for deployments).
+    2. **Restart `convex dev`** if you modified `.env.local`.
+    3. Ensure the client instantiation happens *inside* the handler.
+
+- **Related Rules:**
+  - See [200-database-convex/202-official-convex-rules.mdc](mdc:.cursor/rules/200-database-convex/202-official-convex-rules.mdc) for general Convex best practices.
+

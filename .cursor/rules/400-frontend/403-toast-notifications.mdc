@@ -1,0 +1,58 @@
+---
+description: Toast Notifications: Use `sonner` for toasts; ensure `<Toaster/>` in layout; import `toast` from `sonner` and call methods like `toast.success(...)`.
+globs: 
+alwaysApply: false
+---
+
+- **Use Sonner for Toast Notifications**
+  - **Library:** This project uses `sonner` for displaying toast notifications.
+  - **Setup:** Ensure the `<Toaster />` component from `sonner` is included in the root layout (`app/layout.tsx`).
+    ```typescript
+    // app/layout.tsx
+    import { Toaster } from "sonner";
+    // ... other imports
+
+    export default function RootLayout({ children }) {
+      return (
+        <html lang="en">
+          <body>
+            {/* ... other providers/layout */} 
+            {children}
+            <Toaster position="top-center" /> {/* Or desired position */}
+            {/* ... */} 
+          </body>
+        </html>
+      );
+    }
+    ```
+  - **Usage:**
+    - Import the `toast` function directly from `sonner` in your client components (`"use client"`).
+    - Call the appropriate method on the `toast` object (e.g., `success`, `error`, `info`, `warning`, `message`, `loading`).
+    - Pass the message string as the first argument.
+
+  - **Example (in a Client Component or Server Action handler):**
+    ```typescript
+    "use client"; // Or called from a server action handler in a client component
+
+    import { toast } from "sonner";
+    import { Button } from "@/components/ui/button";
+
+    function MyComponent() {
+      const handleSuccess = () => {
+        toast.success("Operation completed successfully!");
+      };
+
+      const handleError = () => {
+        toast.error("Something went wrong. Please try again.");
+      };
+
+      return (
+        <div>
+          <Button onClick={handleSuccess}>Trigger Success</Button>
+          <Button variant="destructive" onClick={handleError}>Trigger Error</Button>
+        </div>
+      );
+    }
+    ```
+  - **Avoid:** Do not use `useToast` from `@/components/ui/toast` if it exists, as that belongs to Shadcn's separate toast component which is not the primary one configured here. Stick to importing `toast` from `sonner`.
+

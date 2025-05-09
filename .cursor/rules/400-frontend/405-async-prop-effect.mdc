@@ -1,0 +1,89 @@
+---
+description: useEffect Initialization: Fetch data in parent, pass as stable props, initialize in child effect, depend on props, and ensure cleanup/re-creation.
+globs: 
+alwaysApply: false
+---
+# `useEffect` Initialization with Async Props/Data
+
+## Description
+This rule addresses pitfalls when initializing browser APIs, external libraries, or complex state within a `useEffect` hook that depends on data loaded asynchronously (e.g., via `useQuery` within the same component, or props passed from a parent still fetching data).
+
+## Problem
+- A `useEffect` might run *before* the required async data is available, leading to initialization with default or incorrect values.
+- Subsequent re-renders when the data *does* arrive might not reliably trigger the correct re-initialization logic within the effect, especially for external APIs or libraries that expect configuration at instantiation time.
+- Simply updating properties on an existing instance initialized with wrong data (like `SpeechRecognition.lang`) might not work as expected or consistently.
+- Checks for data loading state (e.g., `data !== undefined`) can be flawed if the loading state transitions through intermediate values like `null` before reaching the final data object.
+
+## Solution: Prefer Stable Props & Effect Re-creation
+
+1.  **Fetch Data Higher Up:** Whenever feasible, fetch the necessary async data in the **parent component** (or a dedicated data-fetching component/hook). If secure data is needed client-side, consider using a Server Action initiated by the parent.
+2.  **Pass Stable Props:** Pass the fully resolved data (or derived values like `userLanguage`) down to the child component as **regular props**.
+3.  **Ensure All Required Props:** When passing data down, carefully review the child component's `Props` interface (defined in the child component's file) to identify **all** required (non-optional) props. Ensure the parent component provides values for every required prop. This includes configuration-related props that might come from browser APIs (e.g., `navigator.language`), user settings, or other context, not just data fetched from the backend. Determine these values in the parent and pass them down.
+4.  **Child Component `useEffect`:**
+    *   The child component's `useEffect` hook should depend directly on these **stable props**.
+    *   Inside the effect, perform the initialization using the prop values.
+    *   **Crucially:** In the effect's **cleanup function**, ensure any created instances or complex state tied to the prop are fully disposed of or reset (e.g., setting instance refs to `null`, calling cleanup methods).
+5.  **Effect Logic:** The main body of the effect should check if an instance already exists (e.g., `if (!instanceRef.current)`). If not, it creates a *new* instance using the current (guaranteed valid) prop values. This ensures that if a prop dependency changes, the cleanup nullifies the old instance, and the effect re-runs to create a fresh one with the new prop value.
+
+## Example
+
+```typescript
+// ParentPage.tsx
+import { ChildComponent } from './ChildComponent';
+import { useMyServerAction } from './useMyServerAction'; // Fetches data including config
+
+function ParentPage() {
+  const { data, isLoading } = useMyServerAction();
+
+  if (isLoading) {
+    return <p>Loading config...</p>;
+  }
+
+  // Pass resolved config down as a stable prop
+  const configValue = data?.configValue || 'default-config';
+
+  return <ChildComponent config={configValue} />;
+}
+
+// ChildComponent.tsx
+import React, { useEffect, useRef } from 'react';
+import { ExternalApi } from './external-api';
+
+interface ChildProps {
+  config: string; // Stable prop from parent
+}
+
+function ChildComponent({ config }: ChildProps) {
+  const apiInstanceRef = useRef<ExternalApi | null>(null);
+
+  useEffect(() => {
+    console.log(`Effect running with config: ${config}`);
+
+    // Only initialize if instance doesn't exist for this config
+    if (!apiInstanceRef.current) {
+        console.log(`Creating new ExternalApi instance with config: ${config}`);
+        apiInstanceRef.current = new ExternalApi({ setting: config });
+        apiInstanceRef.current.start();
+    }
+
+    // Cleanup: Dispose of the instance when config changes or component unmounts
+    return () => {
+      if (apiInstanceRef.current) {
+        console.log(`Cleaning up ExternalApi instance for config: ${config}`);
+        apiInstanceRef.current.dispose();
+        apiInstanceRef.current = null; // Nullify ref to allow re-creation
+      }
+    };
+  }, [config]); // Depend ONLY on the stable prop
+
+  return <div>Component using config: {config}</div>;
+}
+```
+
+## Anti-Patterns
+
+-   **❌ Fetching and Initializing in the Same Component:** Avoid fetching data with `useQuery` and having a `useEffect` in the *same* component try to initialize something based on that data *without* carefully handling the `undefined`/`null`/data states and ensuring proper re-initialization via cleanup.
+-   **❌ Modifying Existing Instances:** Don't rely on simply modifying properties of an instance created with incorrect initial data (e.g., `instance.lang = newLang;`) unless the library explicitly supports and guarantees this pattern works reliably after initial instantiation.
+-   **❌ Flawed Loading Checks:** Avoid simple `data !== undefined` checks if `null` is a possible intermediate state from your data fetching hook.
+
+

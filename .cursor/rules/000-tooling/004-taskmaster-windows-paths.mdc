@@ -1,0 +1,40 @@
+---
+description: Taskmaster on Windows: Always use standard Windows paths (C:/...) for `projectRoot`, not URL-encoded paths (/c%3A/...).
+globs: 
+alwaysApply: false
+---
+
+-   **Problem:** Taskmaster MCP tools (`initialize_project`, `get_tasks`, `next_task`, etc.) can fail when running on a Windows host if the `projectRoot` parameter is provided in a URL-encoded format (e.g., `/c%3A/path/to/project`) instead of a standard Windows path format.
+
+-   **Symptoms:**
+    -   Errors like `ENOENT: no such file or directory, chdir '...' -> '/c%3A/...'` during operations like initialization.
+    -   Failure to find files (like `tasks.json`) even when paths seem correct, potentially due to incorrect path joining (e.g., the tool might prepend `C:\` to `/c%3A/...`, resulting in an invalid path like `C:\\c%3A\\...`).
+
+-   **Solution:**
+    -   When calling any Taskmaster MCP tool from a Windows environment, **always** provide the `projectRoot` parameter using a standard Windows path format.
+    -   Use forward slashes (`/`) or escaped backslashes (`\\\\`) for separators.
+
+-   **Examples:**
+
+    ```json
+    // ❌ DON'T: Use URL-encoded paths
+    {
+      "projectRoot": "/c%3A/Workspace/Tests/party-starter/conusltception-cursor",
+      "yes": true
+    }
+
+    // ✅ DO: Use standard Windows paths
+    {
+      "projectRoot": "C:/Workspace/Tests/party-starter/conusltception-cursor",
+      "yes": true
+    }
+
+    // ✅ ALSO OK: Using escaped backslashes
+    {
+        "projectRoot": "C:\\\\Workspace\\\\Tests\\\\party-starter\\\\conusltception-cursor",
+        "yes": true
+    }
+    ```
+
+-   **Scope:** This applies to *all* Taskmaster MCP tools that accept a `projectRoot` parameter when the user's operating system is Windows.
+

@@ -1,7 +1,11 @@
 ---
 description: Authentication: How to implement Clerk auth patterns and use our reusable components
-globs: app/**/*.tsx, components/**/*.tsx
+globs: 
 alwaysApply: false
+---
+---
+description: Authentication: How to implement Clerk auth patterns and use our reusable components
+globs: app/**/*.ts, app/**/*.tsx, components/**/*.tsx
 ---
 
 # Clerk Authentication Patterns

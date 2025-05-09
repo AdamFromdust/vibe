@@ -1,0 +1,28 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Automatic TypeScript Type Checking and Fixing
+
+- **Goal:** Ensure TypeScript code remains type-safe after modifications.
+- **Trigger:** Automatically applied after any code edit to `.ts` or `.tsx` files within the project where this rule is active.
+
+## Workflow
+
+1.  **Run Type Check:** After I apply a code change to a relevant file, I will execute the `pnpm typecheck` command in the terminal using the appropriate tool (`run_terminal_cmd`).
+2.  **Analyze Output:** I will wait for the command to complete and analyze its output for any TypeScript errors (typically prefixed with `TS...`).
+3.  **Attempt Fixes:**
+    - If type errors are detected, I will attempt to automatically fix them by generating and applying code edits (`edit_file`).
+    - I will prioritize clear, unambiguous errors that I am confident I can resolve correctly.
+4.  **Re-check (If Necessary):** After applying fixes, I may run `pnpm typecheck` again to verify the fixes and catch any remaining or newly introduced errors. I will limit the number of fix attempts to avoid infinite loops.
+5.  **Report Issues:** If errors persist, are ambiguous, or require manual intervention/clarification, I will report them back to you.
+
+## Considerations
+
+- **✅ DO:** Expect `pnpm typecheck` to run automatically post-edit on `.ts`/`.tsx` files.
+- **❌ DON'T:** Assume all type errors can or will be fixed automatically. Complex errors, issues requiring architectural changes, or errors stemming from incorrect logic may need your direct intervention.
+- **Command Existence:** This rule relies on a `typecheck` script being defined in your `package.json` (e.g., `"typecheck": "tsc --noEmit"`) and being executable via `pnpm typecheck`.
+- **Performance:** Running the type checker after every edit might introduce a slight delay, especially in large projects.
+- **Scope:** This rule applies to edits *I* make. It doesn't automatically trigger on manual user edits unless Cursor's general configuration supports such a feature.
+

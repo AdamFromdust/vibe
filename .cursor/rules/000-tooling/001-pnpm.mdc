@@ -3,6 +3,12 @@ description: When installing packages use pnpm
 globs: 
 alwaysApply: false
 ---
+\
+---
+description: Tooling: Use pnpm for package installation.
+alwaysApply: true
+---
+
 When installing packages use pnpm
 
 Assume I already have a dev server running so do not do `pnpm dev` as a command

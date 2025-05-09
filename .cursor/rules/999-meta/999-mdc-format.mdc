@@ -130,3 +130,8 @@ When updating existing rules:
 2. Keep the same glob patterns unless intentionally changing the rule's scope
 3. Update the description if the purpose of the rule changes
 4. Consider whether changes should propagate to related rules (e.g., CE versions)
+
+---
+description: Use when user asks to create or update *.mdc files
+globs: **/*.mdc
+---

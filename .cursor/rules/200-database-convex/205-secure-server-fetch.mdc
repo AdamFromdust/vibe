@@ -1,0 +1,131 @@
+---
+description: Convex Secure Fetch: Use Server Action -> Convex Action -> Internal Query/Mutation pattern for fetching user-specific data from Next.js server environments, passing userId explicitly for ownership checks.
+globs: 
+alwaysApply: false
+---
+---
+description: Convex Secure Fetch: Use Server Action -> Convex Action -> Internal Query/Mutation pattern for fetching user-specific data from Next.js server environments, passing userId explicitly for ownership checks.
+globs: app/_actions/**/*.ts, app/actions/**/*.ts, convex/**/*.ts, app/**/page.tsx, app/**/layout.tsx
+---
+
+# Secure Convex Data Fetching from Next.js Server
+
+## Problem
+
+When fetching user-specific data (requiring authentication and ownership checks) from Convex within Next.js server environments (Server Components, Server Actions, API Routes), simply calling a public Convex query (`api...`) using `convexNodeClient` might fail.
+
+The `convexNodeClient` doesn't automatically propagate the user's authentication context (e.g., from Clerk's `auth()`) to the Convex query's `ctx.auth.getUserIdentity()` in a reliable way for ownership checks inside the query.
+
+Calling internal Convex queries (`internal...`) directly from `convexNodeClient` is also not allowed.
+
+## Solution: Server Action -> Convex Action -> Internal Query/Mutation Pattern
+
+To securely fetch or mutate user-specific data, use the following pattern:
+
+1.  **Internal Convex Query/Mutation (`convex/dataAccess.ts`):
+    *   Define using `internalQuery({...})` or `internalMutation({...})`.
+    *   Accept necessary arguments, including the `userId` (e.g., Clerk User ID as `v.string()`).
+    *   Fetch the data (e.g., `ctx.db.get(args.docId)`).
+    *   **Perform explicit ownership check** using the passed `userId` (e.g., `if (doc.userId !== args.userId) return null;`).
+    *   Return the data or `null`/throw error.
+
+    ```typescript
+    // convex/dataAccess.ts
+    import { internalQuery } from "./_generated/server";
+    import { v } from "convex/values";
+    import { Id } from "./_generated/dataModel";
+
+    export const getMyDocInternal = internalQuery({
+      args: {
+        userId: v.string(),
+        docId: v.id("myTable"),
+      },
+      handler: async (ctx, args) => {
+        const doc = await ctx.db.get(args.docId);
+        if (!doc || doc.userId !== args.userId) {
+          // Return null if not found or not owned
+          return null;
+        }
+        return doc;
+      },
+    });
+    ```
+
+2.  **Convex Action (`convex/actions.ts`):
+    *   Define using `action({...})`.
+    *   Accept the same arguments as the internal function, including `userId`.
+    *   Call the internal query/mutation using `ctx.runQuery(internal...)` or `ctx.runMutation(internal...)`, passing all arguments.
+    *   Return the result.
+
+    ```typescript
+    // convex/actions.ts
+    import { action } from "./_generated/server";
+    import { internal } from "./_generated/api";
+    import { v } from "convex/values";
+    import { Id } from "./_generated/dataModel";
+
+    export const getMyDocAction = action({
+      args: {
+        userId: v.string(),
+        docId: v.id("myTable"),
+      },
+      handler: async (ctx, args) => {
+        const doc = await ctx.runQuery(internal.dataAccess.getMyDocInternal, {
+          userId: args.userId,
+          docId: args.docId,
+        });
+        return doc;
+      },
+    });
+    ```
+
+3.  **Next.js Server Action (`app/_actions/myActions.ts`):
+    *   Use `"use server"`.
+    *   Verify user authentication using `await auth()` from Clerk.
+    *   Import and use the standard `convexNodeClient`.
+    *   Call the **Convex Action** using `convexNodeClient.action(api.actions.getMyDocAction, { userId, docId })`.
+    *   Handle the result or potential errors.
+
+    ```typescript
+    // app/_actions/myActions.ts
+    "use server";
+    import { auth } from "@clerk/nextjs/server";
+    import { api } from "@/convex/_generated/api";
+    import { convexNodeClient } from "@/lib/convex/serverClient";
+    import { Id } from "@/convex/_generated/dataModel";
+
+    export async function getMyDocument(docId: Id<"myTable">) {
+      const { userId } = await auth();
+      if (!userId) {
+        throw new Error("Not authenticated");
+      }
+
+      try {
+        const document = await convexNodeClient.action(api.actions.getMyDocAction, {
+          userId: userId,
+          docId: docId,
+        });
+        return document; // Can be Doc or null
+      } catch (error) {
+        console.error("Failed to get document:", error);
+        return null; // Or re-throw specific error
+      }
+    }
+    ```
+
+4.  **Next.js Server Component/Page (`app/my-page/page.tsx`):
+    *   Call the Next.js Server Action (`getMyDocument`) to fetch data.
+    *   Handle loading/error states and display the data.
+
+## Benefits
+
+*   **Clear Auth Flow:** Authentication is checked server-side in Next.js first.
+*   **Explicit Ownership Check:** Ownership is verified explicitly within the Convex internal function using the passed `userId`.
+*   **Secure:** Avoids relying on potentially complex/fragile implicit auth context propagation for direct `convexNodeClient.query` calls.
+*   **Standard Pattern:** Follows Convex best practices for separating concerns and using actions as intermediaries.
+
+## When to Use This Pattern
+
+*   Fetching or mutating **user-specific data** that requires **ownership checks** from Next.js **server environments** (RSCs, Server Actions, API Routes).
+*   When direct calls to public Convex queries using `convexNodeClient` fail due to authentication context issues (`ctx.auth` being unavailable or incorrect).
+
