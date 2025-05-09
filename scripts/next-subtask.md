@@ -26,10 +26,6 @@ Write a detailed step by step plan of everything that needs to be done in order 
 ## SubGoal 4 - Implementation
 You will choose one step from the plan that was not yet implemented and focus solely on that step with the implemntation.
 ## SubGoal 5 - Testing
-- SubGoal 4.1 - write a list of tests:
-Write how will you know the thing is implemented. Write what unit test, end to end tests need to be written.
-- SubGoal 4.2:
-Save the instruction of what tests need to be implemented to "tests/instructions/unit-test/<subtask_id>_unit-test-instructions.md"
 - SubGoal 4.3: make sure to run:
 - -  ESLint (pnpm## SubGoal 6 - Executive Summary and Done confirmation
 - Write an executive summary (to chat) of everything that was done for the user.
