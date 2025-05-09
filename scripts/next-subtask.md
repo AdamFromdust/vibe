@@ -9,7 +9,7 @@ The main goal's subgoals are:
 ## SubGoal 1 - analysis
 - SubGoal 1.1. Define clear context - Call taskmaster list to know what has already been done, and what is planned - these are things you should *NOT focus* on. Focus solely on the next subtask
 - SubGoal 1.2. use taskmaster to write down the subtask (task-master show --id=<subtask_id>) with all the details and requirements from folders /task in .txt file for the task and tasks.json (especially mentioned REQs and FRIs)
-- SubGoal 1.3. analyze the documentation (.md files FRS, SAD, PRD in /docs folder) and write out all the relevant information from them (mainly REQs and FRIs)
+- SubGoal 1.3. analyze the documentation (.md files FRS, SAD, PRD in /docs folder) and write out all the relevant information from them (mainly REQs and FRIs, and acceptance criteria AC)
 - Subgoal 1.4: analyze report of dependencies. There is a folder /ai/reports/implementation containing .md files with repors in format "<subtask_id>_implementation-report.md". Make a list of all the dependencies (both tasks and subtasks) of the subtask to be implemented and add all the subtasks of current task before the current subtask (eg for task 10.4, the subtasks 10.1, 10.2, 10.3). Read the implementation reports of all of the items from this list of dependencies.
 - SubGoal 1.5. analyze the codebase and write out a list of all the relevant files
 - SubGoal 1.6. analyze the documentation of the technologies provided by cursor docs uploaded by user in Cursor Settings (eg. by @NAME "Convex Documentation", "Next.js Documentation", "Zod Docs"...) and write out all the relevant parts of the documentation 
