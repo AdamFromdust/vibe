@@ -40,3 +40,7 @@ node_modules/
 
 /screenshots
 .vercel
+
+# Added by Claude Task Master
+tasks.json
+tasks/ 
