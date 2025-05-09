@@ -1,0 +1,117 @@
+# Task ID: 4
+# Title: Implement Frontend API Integration
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: medium
+# Description: Develop client-side logic to call the backend API endpoint when the 'Make the magic happen' button is clicked, and handle the response.
+# Details:
+1. Create a function to handle the 'Make the magic happen' button click
+2. Implement loading state management during API calls
+3. Call the getUserLocation function to get the user's location
+4. Make a fetch request to the backend API with the dream text and location
+5. Handle API responses and errors
+6. Update the UI state based on the API response
+
+Code example:
+```tsx
+'use client';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { getUserLocation } from '@/lib/geolocation';
+
+export default function MagicButton() {
+  const [dreamInput, setDreamInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [visualizationText, setVisualizationText] = useState('');
+  const [error, setError] = useState('');
+  const [showVisualization, setShowVisualization] = useState(false);
+  
+  const handleMagicButtonClick = async () => {
+    if (!dreamInput.trim()) {
+      setError('Please describe your dream first');
+      return;
+    }
+    
+    setError('');
+    setIsLoading(true);
+    
+    try {
+      // Get user location
+      const location = await getUserLocation();
+      
+      // Call the backend API
+      const response = await fetch('/api/magic-button/generate-visualization', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dreamText: dreamInput,
+          location,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate visualization');
+      }
+      
+      const data = await response.json();
+      setVisualizationText(data.visualizationText);
+      setShowVisualization(true);
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Sorry, the magic isn\'t flowing right now. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      {!showVisualization ? (
+        <>
+          <h1 className="text-3xl font-bold mb-6">Magic Button</h1>
+          
+          <div className="mb-8">
+            <p className="text-lg mb-4">
+              Shhh... Can you hear it? The Magic Button has amplified your connection to your deepest aspirations. Now it's your turn to speak. What's that one dream you've secretly cherished, the one you barely dared to admit even to yourself? Whisper it to us. Paint a picture with your words. Imagine you're describing it to the universe, and the universe is listening intently, ready to conspire in your favor. No dream is too big, too bold, or too 'out there.' Let your imagination run wild
+            </p>
+          </div>
+          
+          <Textarea
+            placeholder="Describe your dream here..."
+            className="min-h-32 mb-4"
+            value={dreamInput}
+            onChange={(e) => setDreamInput(e.target.value)}
+            disabled={isLoading}
+          />
+          
+          {error && <p className="text-red-500 mb-4">{error}</p>}
+          
+          <Button 
+            className="w-full" 
+            size="lg" 
+            onClick={handleMagicButtonClick}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Creating magic...' : 'Make the magic happen'}
+          </Button>
+        </>
+      ) : (
+        // Visualization display will be implemented in another task
+        <div>Visualization content will appear here</div>
+      )}
+    </div>
+  );
+}
+```
+
+# Test Strategy:
+1. Test the button click handler with valid input
+2. Test with empty input validation
+3. Test loading state management
+4. Mock API calls to test success and error scenarios
+5. Verify error message display
+6. Test the UI state transitions
+7. Verify that the location service is called correctly

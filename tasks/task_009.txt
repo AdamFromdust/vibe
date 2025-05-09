@@ -1,0 +1,119 @@
+# Task ID: 9
+# Title: Implement Application State Management
+# Status: pending
+# Dependencies: 4, 5, 6
+# Priority: medium
+# Description: Create a comprehensive state management solution to handle the application's various states and transitions.
+# Details:
+1. Define the application's possible states: initial, loading, visualization display, speaking, error
+2. Implement a state machine or reducer to manage transitions between states
+3. Create actions for all user interactions and async operations
+4. Ensure that UI components reflect the current application state
+5. Implement persistence for the current session state (optional)
+
+Code example:
+```tsx
+// Using a reducer for state management
+import { useReducer, useEffect } from 'react';
+
+type State = {
+  view: 'input' | 'visualization';
+  dreamInput: string;
+  visualizationText: string;
+  location: string;
+  isLoading: boolean;
+  isSpeaking: boolean;
+  error: string | null;
+};
+
+type Action =
+  | { type: 'SET_DREAM_INPUT'; payload: string }
+  | { type: 'START_LOADING' }
+  | { type: 'SET_VISUALIZATION'; payload: string }
+  | { type: 'SET_LOCATION'; payload: string }
+  | { type: 'START_SPEAKING' }
+  | { type: 'STOP_SPEAKING' }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'RESET' };
+
+const initialState: State = {
+  view: 'input',
+  dreamInput: '',
+  visualizationText: '',
+  location: '',
+  isLoading: false,
+  isSpeaking: false,
+  error: null,
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'SET_DREAM_INPUT':
+      return { ...state, dreamInput: action.payload };
+    case 'START_LOADING':
+      return { ...state, isLoading: true, error: null };
+    case 'SET_VISUALIZATION':
+      return {
+        ...state,
+        visualizationText: action.payload,
+        isLoading: false,
+        view: 'visualization',
+      };
+    case 'SET_LOCATION':
+      return { ...state, location: action.payload };
+    case 'START_SPEAKING':
+      return { ...state, isSpeaking: true };
+    case 'STOP_SPEAKING':
+      return { ...state, isSpeaking: false };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, isLoading: false };
+    case 'CLEAR_ERROR':
+      return { ...state, error: null };
+    case 'RESET':
+      return initialState;
+    default:
+      return state;
+  }
+}
+
+// In the MagicButton component
+function MagicButton() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  
+  // Then use dispatch instead of individual state setters
+  // Example:
+  const handleMagicButtonClick = async () => {
+    if (!state.dreamInput.trim()) {
+      dispatch({ type: 'SET_ERROR', payload: 'Please describe your dream first' });
+      return;
+    }
+    
+    dispatch({ type: 'START_LOADING' });
+    
+    try {
+      const location = await getUserLocation();
+      dispatch({ type: 'SET_LOCATION', payload: location });
+      
+      // API call...
+      
+      dispatch({ type: 'SET_VISUALIZATION', payload: data.visualizationText });
+    } catch (error) {
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: 'Sorry, the magic isn\'t flowing right now. Please try again.' 
+      });
+    }
+  };
+  
+  // Rest of the component...
+}
+```
+
+# Test Strategy:
+1. Test all state transitions
+2. Verify that the UI correctly reflects each state
+3. Test that actions correctly modify the state
+4. Verify that error states are handled properly
+5. Test the reset functionality
+6. Verify that the state machine handles all possible user flows

@@ -1,0 +1,144 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Create Basic UI Layout and Components",
+      "description": "Develop the foundational page layout using Next.js and Shadcn/UI components, including the intro text display, dream input field, and 'Make the magic happen' button.",
+      "details": "1. Create a new Next.js page for the Magic Button feature\n2. Implement a clean, minimalist layout using Shadcn/UI components\n3. Add the static intro text as specified in the PRD: \"Shhh... Can you hear it? The Magic Button has amplified your connection to your deepest aspirations...\"\n4. Add a multi-line text input field using Shadcn/UI's `<Textarea>` component for users to enter their dream\n5. Add the 'Make the magic happen' button using Shadcn/UI's `<Button>` component\n6. Ensure the UI is responsive and works well on different screen sizes\n7. Implement state management for the dream input using React hooks\n8. Respect theming capabilities provided by `next-themes` for light/dark mode support\n\nCode example for the main component structure:\n```tsx\n'use client';\nimport { useState } from 'react';\nimport { Button } from '@/components/ui/button';\nimport { Textarea } from '@/components/ui/textarea';\n\nexport default function MagicButton() {\n  const [dreamInput, setDreamInput] = useState('');\n  \n  return (\n    <div className=\"container mx-auto px-4 py-8 max-w-2xl\">\n      <h1 className=\"text-3xl font-bold mb-6\">Magic Button</h1>\n      \n      <div className=\"mb-8\">\n        <p className=\"text-lg mb-4\">\n          Shhh... Can you hear it? The Magic Button has amplified your connection to your deepest aspirations. Now it's your turn to speak. What's that one dream you've secretly cherished, the one you barely dared to admit even to yourself? Whisper it to us. Paint a picture with your words. Imagine you're describing it to the universe, and the universe is listening intently, ready to conspire in your favor. No dream is too big, too bold, or too 'out there.' Let your imagination run wild\n        </p>\n      </div>\n      \n      <Textarea\n        placeholder=\"Describe your dream here...\"\n        className=\"min-h-32 mb-4\"\n        value={dreamInput}\n        onChange={(e) => setDreamInput(e.target.value)}\n      />\n      \n      <Button className=\"w-full\" size=\"lg\">\n        Make the magic happen\n      </Button>\n    </div>\n  );\n}\n```",
+      "testStrategy": "1. Verify that all UI components render correctly\n2. Test responsive design on different screen sizes\n3. Validate that the text input field captures user input correctly\n4. Ensure the button is properly styled and clickable\n5. Verify that theming works correctly (light/dark mode)\n6. Test accessibility features (keyboard navigation, screen reader compatibility)",
+      "priority": "high",
+      "dependencies": [],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 2,
+      "title": "Implement Geolocation Service",
+      "description": "Create a service to detect the user's location using the Browser Geolocation API with a fallback to 'in a faraway land' when location cannot be determined.",
+      "details": "1. Create a utility function to access the Browser Geolocation API\n2. Implement permission handling for location access\n3. Extract relevant location information (city, country) from coordinates\n4. Implement the fallback mechanism to use 'in a faraway land' when location is unavailable\n5. Handle potential errors and timeouts gracefully\n\nCode example:\n```tsx\nexport async function getUserLocation(): Promise<string> {\n  return new Promise((resolve) => {\n    if (!navigator.geolocation) {\n      resolve('in a faraway land');\n      return;\n    }\n    \n    const successCallback = async (position: GeolocationPosition) => {\n      try {\n        const { latitude, longitude } = position.coords;\n        // Use reverse geocoding to get location name\n        // This is a simplified example - in production, you might use a geocoding service\n        const response = await fetch(\n          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`\n        );\n        \n        if (!response.ok) throw new Error('Geocoding failed');\n        \n        const data = await response.json();\n        const location = data.address?.city || data.address?.town || data.address?.state || data.address?.country;\n        \n        resolve(location || 'in a faraway land');\n      } catch (error) {\n        console.error('Error getting location name:', error);\n        resolve('in a faraway land');\n      }\n    };\n    \n    const errorCallback = () => {\n      resolve('in a faraway land');\n    };\n    \n    navigator.geolocation.getCurrentPosition(\n      successCallback,\n      errorCallback,\n      { timeout: 5000 }\n    );\n    \n    // Set a timeout as additional fallback\n    setTimeout(() => resolve('in a faraway land'), 6000);\n  });\n}\n```",
+      "testStrategy": "1. Test the geolocation function with browser permissions granted\n2. Test with browser permissions denied\n3. Test with geolocation API timeout\n4. Verify the fallback mechanism works correctly\n5. Test error handling for various failure scenarios\n6. Mock the geolocation API for consistent testing",
+      "priority": "medium",
+      "dependencies": [
+        1
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 3,
+      "title": "Create Backend API Endpoint for Visualization Generation",
+      "description": "Develop a new public Next.js API route that accepts user's dream and location data, constructs a prompt for OpenAI, and returns the generated visualization text.",
+      "details": "1. Create a new API route at `/api/magic-button/generate-visualization`\n2. Configure the endpoint to accept POST requests with dream text and location data\n3. Construct the KIP-inspired prompt as specified in the PRD\n4. Implement secure communication with the OpenAI API using the gpt-4.1-mini model\n5. Handle API responses and errors appropriately\n6. Return the generated visualization text or error message to the client\n\nCode example:\n```typescript\n// app/api/magic-button/generate-visualization/route.ts\nimport { NextResponse } from 'next/server';\nimport OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  apiKey: process.env.OPENAI_API_KEY,\n});\n\nexport async function POST(request: Request) {\n  try {\n    const { dreamText, location } = await request.json();\n    \n    if (!dreamText) {\n      return NextResponse.json(\n        { error: 'Dream text is required' },\n        { status: 400 }\n      );\n    }\n    \n    const userLocation = location || 'in a faraway land';\n    \n    const prompt = `Provide me with a visualization exercise, drawing inspiration from Katathym Imaginative Psychotherapy (KIP), designed to help a client visualize their desired goal, particularly one they currently perceive as unattainable. Begin the visualization by incorporating the client's current place of residence or physical location ${userLocation}. The desired goal is described below: \\n${dreamText}`;\n    \n    const response = await openai.chat.completions.create({\n      model: 'gpt-4.1-mini',\n      messages: [\n        { role: 'system', content: 'You are a helpful assistant specializing in guided visualization exercises.' },\n        { role: 'user', content: prompt }\n      ],\n      temperature: 0.7,\n      max_tokens: 1000,\n    });\n    \n    const visualizationText = response.choices[0]?.message?.content || '';\n    \n    return NextResponse.json({ visualizationText });\n  } catch (error) {\n    console.error('Error generating visualization:', error);\n    return NextResponse.json(\n      { error: 'Failed to generate visualization. Please try again.' },\n      { status: 500 }\n    );\n  }\n}\n```",
+      "testStrategy": "1. Test the API endpoint with valid input data\n2. Test with missing or invalid input data\n3. Test error handling for OpenAI API failures\n4. Verify the prompt construction logic\n5. Test response format and structure\n6. Implement mocking for OpenAI API in test environment\n7. Verify rate limiting and error handling",
+      "priority": "high",
+      "dependencies": [],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 4,
+      "title": "Implement Frontend API Integration",
+      "description": "Develop client-side logic to call the backend API endpoint when the 'Make the magic happen' button is clicked, and handle the response.",
+      "details": "1. Create a function to handle the 'Make the magic happen' button click\n2. Implement loading state management during API calls\n3. Call the getUserLocation function to get the user's location\n4. Make a fetch request to the backend API with the dream text and location\n5. Handle API responses and errors\n6. Update the UI state based on the API response\n\nCode example:\n```tsx\n'use client';\nimport { useState } from 'react';\nimport { Button } from '@/components/ui/button';\nimport { Textarea } from '@/components/ui/textarea';\nimport { getUserLocation } from '@/lib/geolocation';\n\nexport default function MagicButton() {\n  const [dreamInput, setDreamInput] = useState('');\n  const [isLoading, setIsLoading] = useState(false);\n  const [visualizationText, setVisualizationText] = useState('');\n  const [error, setError] = useState('');\n  const [showVisualization, setShowVisualization] = useState(false);\n  \n  const handleMagicButtonClick = async () => {\n    if (!dreamInput.trim()) {\n      setError('Please describe your dream first');\n      return;\n    }\n    \n    setError('');\n    setIsLoading(true);\n    \n    try {\n      // Get user location\n      const location = await getUserLocation();\n      \n      // Call the backend API\n      const response = await fetch('/api/magic-button/generate-visualization', {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n        },\n        body: JSON.stringify({\n          dreamText: dreamInput,\n          location,\n        }),\n      });\n      \n      if (!response.ok) {\n        throw new Error('Failed to generate visualization');\n      }\n      \n      const data = await response.json();\n      setVisualizationText(data.visualizationText);\n      setShowVisualization(true);\n    } catch (error) {\n      console.error('Error:', error);\n      setError('Sorry, the magic isn\\'t flowing right now. Please try again.');\n    } finally {\n      setIsLoading(false);\n    }\n  };\n  \n  return (\n    <div className=\"container mx-auto px-4 py-8 max-w-2xl\">\n      {!showVisualization ? (\n        <>\n          <h1 className=\"text-3xl font-bold mb-6\">Magic Button</h1>\n          \n          <div className=\"mb-8\">\n            <p className=\"text-lg mb-4\">\n              Shhh... Can you hear it? The Magic Button has amplified your connection to your deepest aspirations. Now it's your turn to speak. What's that one dream you've secretly cherished, the one you barely dared to admit even to yourself? Whisper it to us. Paint a picture with your words. Imagine you're describing it to the universe, and the universe is listening intently, ready to conspire in your favor. No dream is too big, too bold, or too 'out there.' Let your imagination run wild\n            </p>\n          </div>\n          \n          <Textarea\n            placeholder=\"Describe your dream here...\"\n            className=\"min-h-32 mb-4\"\n            value={dreamInput}\n            onChange={(e) => setDreamInput(e.target.value)}\n            disabled={isLoading}\n          />\n          \n          {error && <p className=\"text-red-500 mb-4\">{error}</p>}\n          \n          <Button \n            className=\"w-full\" \n            size=\"lg\" \n            onClick={handleMagicButtonClick}\n            disabled={isLoading}\n          >\n            {isLoading ? 'Creating magic...' : 'Make the magic happen'}\n          </Button>\n        </>\n      ) : (\n        // Visualization display will be implemented in another task\n        <div>Visualization content will appear here</div>\n      )}\n    </div>\n  );\n}\n```",
+      "testStrategy": "1. Test the button click handler with valid input\n2. Test with empty input validation\n3. Test loading state management\n4. Mock API calls to test success and error scenarios\n5. Verify error message display\n6. Test the UI state transitions\n7. Verify that the location service is called correctly",
+      "priority": "medium",
+      "dependencies": [
+        1,
+        2,
+        3
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 5,
+      "title": "Implement Visualization Display",
+      "description": "Create the UI components to display the AI-generated visualization text and the 'Additional instructions' text after successful API response.",
+      "details": "1. Create a component to display the visualization content\n2. Add the static 'Additional instructions' text as specified in the PRD\n3. Style the visualization display for readability and focus\n4. Add the 'Start visualization' button\n5. Implement conditional rendering to show this view after successful API response\n\nCode example:\n```tsx\n// Components to add to the MagicButton component\nconst VisualizationDisplay = ({ visualizationText, onStartVisualization }) => {\n  return (\n    <div className=\"space-y-6\">\n      <h2 className=\"text-2xl font-semibold mb-4\">Your Personalized Visualization</h2>\n      \n      <div className=\"bg-secondary/20 p-6 rounded-lg\">\n        <p className=\"whitespace-pre-line text-lg\">{visualizationText}</p>\n      </div>\n      \n      <div className=\"mt-8\">\n        <h3 className=\"text-xl font-medium mb-3\">Ready to begin?</h3>\n        <p className=\"mb-6\">\n          And know this: there is a gentle current waiting, a soft breeze ready to transport you to a place where all you've just whispered is wonderfully, beautifully true. It's a realm woven from your own desires. When you feel that quiet readiness stirring within, simply close your eyes. Allow yourself to drift, to be carried away by the visualization instructions that will soon unfold, like a secret map revealing itself.\n          Press the button below when your heart says 'now,' and let the journey begin.\n        </p>\n        \n        <Button \n          className=\"w-full\" \n          size=\"lg\" \n          onClick={onStartVisualization}\n        >\n          Start visualization\n        </Button>\n      </div>\n    </div>\n  );\n};\n\n// Update the main component's return statement\nreturn (\n  <div className=\"container mx-auto px-4 py-8 max-w-2xl\">\n    {!showVisualization ? (\n      // Input form as before\n    ) : (\n      <VisualizationDisplay \n        visualizationText={visualizationText} \n        onStartVisualization={handleStartVisualization} \n      />\n    )}\n  </div>\n);\n```",
+      "testStrategy": "1. Test the visualization display component with sample text\n2. Verify that the 'Additional instructions' text is displayed correctly\n3. Test the conditional rendering logic\n4. Verify the styling and layout on different screen sizes\n5. Test the 'Start visualization' button click handler\n6. Verify accessibility of the visualization text display",
+      "priority": "medium",
+      "dependencies": [
+        4
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 6,
+      "title": "Implement Text-to-Speech Functionality",
+      "description": "Develop the Text-to-Speech (TTS) feature using the Web Speech API to read the visualization text aloud when the 'Start visualization' button is clicked.",
+      "details": "1. Create a utility function to handle TTS using the Web Speech API\n2. Implement voice selection logic to prefer a female English voice\n3. Add fallback to default voice when preferred voice is unavailable\n4. Implement the start/restart functionality for the TTS playback\n5. Add basic error handling for TTS failures\n\nCode example:\n```tsx\n// lib/textToSpeech.ts\nexport function speakText(text: string): void {\n  // Check if speech synthesis is available\n  if (!window.speechSynthesis) {\n    console.error('Speech synthesis not supported');\n    return;\n  }\n  \n  // Cancel any ongoing speech\n  window.speechSynthesis.cancel();\n  \n  const utterance = new SpeechSynthesisUtterance(text);\n  \n  // Try to find a female English voice\n  const voices = window.speechSynthesis.getVoices();\n  const femaleEnglishVoice = voices.find(voice => \n    voice.lang.includes('en') && \n    (voice.name.includes('female') || voice.name.includes('Female'))\n  );\n  \n  if (femaleEnglishVoice) {\n    utterance.voice = femaleEnglishVoice;\n  }\n  \n  // Set other properties\n  utterance.rate = 0.9; // Slightly slower for better comprehension\n  utterance.pitch = 1.0;\n  \n  // Error handling\n  utterance.onerror = (event) => {\n    console.error('TTS Error:', event);\n  };\n  \n  // Speak the text\n  window.speechSynthesis.speak(utterance);\n}\n\n// In the MagicButton component\nconst handleStartVisualization = () => {\n  try {\n    speakText(visualizationText);\n  } catch (error) {\n    console.error('Failed to start speech:', error);\n    // Silently fail as per requirements - user can still read the text\n  }\n};\n```",
+      "testStrategy": "1. Test the TTS functionality in different browsers\n2. Verify voice selection logic works correctly\n3. Test the fallback to default voice\n4. Verify that clicking the button multiple times restarts the speech\n5. Test error handling for browsers without TTS support\n6. Verify the speech quality and pronunciation",
+      "priority": "medium",
+      "dependencies": [
+        5
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 7,
+      "title": "Implement Error Handling and User Feedback",
+      "description": "Add comprehensive error handling throughout the application and provide user-friendly feedback for various error scenarios.",
+      "details": "1. Create reusable error handling components and utilities\n2. Implement user-friendly error messages for different scenarios:\n   - OpenAI API failures\n   - Network connectivity issues\n   - Invalid input\n   - TTS failures\n3. Add retry mechanisms where appropriate\n4. Implement loading indicators for async operations\n5. Add toast notifications for transient feedback\n\nCode example:\n```tsx\n// components/ui/ErrorMessage.tsx\nexport function ErrorMessage({ message, onRetry = null }) {\n  return (\n    <div className=\"bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4\" role=\"alert\">\n      <p>{message}</p>\n      {onRetry && (\n        <button \n          onClick={onRetry}\n          className=\"mt-2 text-sm underline\"\n        >\n          Try again\n        </button>\n      )}\n    </div>\n  );\n}\n\n// In the MagicButton component\nconst handleRetry = () => {\n  setError('');\n  handleMagicButtonClick();\n};\n\n// Then in the JSX\n{error && <ErrorMessage message={error} onRetry={handleRetry} />}\n\n// For loading states\n{isLoading && (\n  <div className=\"flex justify-center items-center py-8\">\n    <div className=\"animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary\"></div>\n  </div>\n)}\n```",
+      "testStrategy": "1. Test error handling for all identified error scenarios\n2. Verify that error messages are user-friendly and actionable\n3. Test retry mechanisms\n4. Verify loading indicators appear and disappear appropriately\n5. Test error boundary components\n6. Verify that errors are logged appropriately for debugging",
+      "priority": "medium",
+      "dependencies": [
+        3,
+        4,
+        6
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 8,
+      "title": "Implement Voice Loading and Initialization",
+      "description": "Create a mechanism to preload and initialize speech synthesis voices to ensure they are available when needed for TTS.",
+      "details": "1. Create a utility to initialize and preload speech synthesis voices\n2. Handle the asynchronous nature of voice loading in different browsers\n3. Implement a mechanism to retry voice loading if it fails initially\n4. Add a small delay before TTS starts to ensure voices are loaded\n\nCode example:\n```tsx\n// lib/textToSpeech.ts\nlet voicesLoaded = false;\n\nexport function initVoices(): Promise<boolean> {\n  return new Promise((resolve) => {\n    if (!window.speechSynthesis) {\n      resolve(false);\n      return;\n    }\n    \n    // Check if voices are already loaded\n    if (window.speechSynthesis.getVoices().length > 0) {\n      voicesLoaded = true;\n      resolve(true);\n      return;\n    }\n    \n    // Set up event listener for when voices are loaded\n    const voicesChangedHandler = () => {\n      voicesLoaded = true;\n      resolve(true);\n      window.speechSynthesis.removeEventListener('voiceschanged', voicesChangedHandler);\n    };\n    \n    window.speechSynthesis.addEventListener('voiceschanged', voicesChangedHandler);\n    \n    // Set a timeout in case the event never fires\n    setTimeout(() => {\n      if (!voicesLoaded) {\n        // Try one more time to get voices directly\n        if (window.speechSynthesis.getVoices().length > 0) {\n          voicesLoaded = true;\n          resolve(true);\n        } else {\n          resolve(false);\n        }\n        window.speechSynthesis.removeEventListener('voiceschanged', voicesChangedHandler);\n      }\n    }, 1000);\n  });\n}\n\n// In the MagicButton component, add useEffect to initialize voices\nimport { useEffect } from 'react';\nimport { initVoices } from '@/lib/textToSpeech';\n\nuseEffect(() => {\n  initVoices().then(success => {\n    if (!success) {\n      console.warn('Failed to load TTS voices');\n    }\n  });\n}, []);\n```",
+      "testStrategy": "1. Test voice initialization in different browsers\n2. Verify that voices are correctly loaded and available\n3. Test the timeout and retry mechanism\n4. Verify that TTS works correctly after voice initialization\n5. Test fallback behavior when voices cannot be loaded",
+      "priority": "low",
+      "dependencies": [
+        6
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 9,
+      "title": "Implement Application State Management",
+      "description": "Create a comprehensive state management solution to handle the application's various states and transitions.",
+      "details": "1. Define the application's possible states: initial, loading, visualization display, speaking, error\n2. Implement a state machine or reducer to manage transitions between states\n3. Create actions for all user interactions and async operations\n4. Ensure that UI components reflect the current application state\n5. Implement persistence for the current session state (optional)\n\nCode example:\n```tsx\n// Using a reducer for state management\nimport { useReducer, useEffect } from 'react';\n\ntype State = {\n  view: 'input' | 'visualization';\n  dreamInput: string;\n  visualizationText: string;\n  location: string;\n  isLoading: boolean;\n  isSpeaking: boolean;\n  error: string | null;\n};\n\ntype Action =\n  | { type: 'SET_DREAM_INPUT'; payload: string }\n  | { type: 'START_LOADING' }\n  | { type: 'SET_VISUALIZATION'; payload: string }\n  | { type: 'SET_LOCATION'; payload: string }\n  | { type: 'START_SPEAKING' }\n  | { type: 'STOP_SPEAKING' }\n  | { type: 'SET_ERROR'; payload: string }\n  | { type: 'CLEAR_ERROR' }\n  | { type: 'RESET' };\n\nconst initialState: State = {\n  view: 'input',\n  dreamInput: '',\n  visualizationText: '',\n  location: '',\n  isLoading: false,\n  isSpeaking: false,\n  error: null,\n};\n\nfunction reducer(state: State, action: Action): State {\n  switch (action.type) {\n    case 'SET_DREAM_INPUT':\n      return { ...state, dreamInput: action.payload };\n    case 'START_LOADING':\n      return { ...state, isLoading: true, error: null };\n    case 'SET_VISUALIZATION':\n      return {\n        ...state,\n        visualizationText: action.payload,\n        isLoading: false,\n        view: 'visualization',\n      };\n    case 'SET_LOCATION':\n      return { ...state, location: action.payload };\n    case 'START_SPEAKING':\n      return { ...state, isSpeaking: true };\n    case 'STOP_SPEAKING':\n      return { ...state, isSpeaking: false };\n    case 'SET_ERROR':\n      return { ...state, error: action.payload, isLoading: false };\n    case 'CLEAR_ERROR':\n      return { ...state, error: null };\n    case 'RESET':\n      return initialState;\n    default:\n      return state;\n  }\n}\n\n// In the MagicButton component\nfunction MagicButton() {\n  const [state, dispatch] = useReducer(reducer, initialState);\n  \n  // Then use dispatch instead of individual state setters\n  // Example:\n  const handleMagicButtonClick = async () => {\n    if (!state.dreamInput.trim()) {\n      dispatch({ type: 'SET_ERROR', payload: 'Please describe your dream first' });\n      return;\n    }\n    \n    dispatch({ type: 'START_LOADING' });\n    \n    try {\n      const location = await getUserLocation();\n      dispatch({ type: 'SET_LOCATION', payload: location });\n      \n      // API call...\n      \n      dispatch({ type: 'SET_VISUALIZATION', payload: data.visualizationText });\n    } catch (error) {\n      dispatch({ \n        type: 'SET_ERROR', \n        payload: 'Sorry, the magic isn\\'t flowing right now. Please try again.' \n      });\n    }\n  };\n  \n  // Rest of the component...\n}\n```",
+      "testStrategy": "1. Test all state transitions\n2. Verify that the UI correctly reflects each state\n3. Test that actions correctly modify the state\n4. Verify that error states are handled properly\n5. Test the reset functionality\n6. Verify that the state machine handles all possible user flows",
+      "priority": "medium",
+      "dependencies": [
+        4,
+        5,
+        6
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 10,
+      "title": "Final Integration and End-to-End Testing",
+      "description": "Integrate all components, perform comprehensive testing, and polish the UI for the final application.",
+      "details": "1. Integrate all components into a cohesive application\n2. Perform end-to-end testing of the complete user flow\n3. Optimize performance and loading times\n4. Ensure consistent styling and UI polish\n5. Verify accessibility compliance\n6. Test on different browsers and devices\n7. Implement final error handling and edge cases\n8. Prepare for deployment\n\nChecklist for final review:\n- Complete user flow works from start to finish\n- All UI components render correctly\n- Responsive design works on all target devices\n- Geolocation works with proper fallback\n- OpenAI API integration functions correctly\n- Text-to-Speech works with proper voice selection\n- All error scenarios are handled gracefully\n- Loading states and transitions are smooth\n- Accessibility requirements are met\n- Performance is optimized\n\nDeployment steps:\n1. Verify environment variables are set correctly\n2. Build the application for production\n3. Test the production build locally\n4. Deploy to the target hosting platform (e.g., Vercel)\n5. Perform post-deployment testing\n\n```bash\n# Build command\nnpm run build\n\n# Local production testing\nnpm run start\n\n# Deploy to Vercel (if using Vercel CLI)\nvercel --prod\n```",
+      "testStrategy": "1. Create a comprehensive test plan covering all features\n2. Perform manual end-to-end testing of the complete user flow\n3. Test on multiple browsers (Chrome, Firefox, Safari, Edge)\n4. Test on different devices (desktop, tablet, mobile)\n5. Verify all error handling and edge cases\n6. Conduct accessibility testing (WCAG compliance)\n7. Perform performance testing (load times, TTS responsiveness)\n8. Verify that the application meets all requirements specified in the PRD",
+      "priority": "high",
+      "dependencies": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "status": "pending",
+      "subtasks": []
+    }
+  ]
+}

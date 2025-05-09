@@ -1,0 +1,70 @@
+# Task ID: 3
+# Title: Create Backend API Endpoint for Visualization Generation
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Develop a new public Next.js API route that accepts user's dream and location data, constructs a prompt for OpenAI, and returns the generated visualization text.
+# Details:
+1. Create a new API route at `/api/magic-button/generate-visualization`
+2. Configure the endpoint to accept POST requests with dream text and location data
+3. Construct the KIP-inspired prompt as specified in the PRD
+4. Implement secure communication with the OpenAI API using the gpt-4.1-mini model
+5. Handle API responses and errors appropriately
+6. Return the generated visualization text or error message to the client
+
+Code example:
+```typescript
+// app/api/magic-button/generate-visualization/route.ts
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(request: Request) {
+  try {
+    const { dreamText, location } = await request.json();
+    
+    if (!dreamText) {
+      return NextResponse.json(
+        { error: 'Dream text is required' },
+        { status: 400 }
+      );
+    }
+    
+    const userLocation = location || 'in a faraway land';
+    
+    const prompt = `Provide me with a visualization exercise, drawing inspiration from Katathym Imaginative Psychotherapy (KIP), designed to help a client visualize their desired goal, particularly one they currently perceive as unattainable. Begin the visualization by incorporating the client's current place of residence or physical location ${userLocation}. The desired goal is described below: \n${dreamText}`;
+    
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant specializing in guided visualization exercises.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+    
+    const visualizationText = response.choices[0]?.message?.content || '';
+    
+    return NextResponse.json({ visualizationText });
+  } catch (error) {
+    console.error('Error generating visualization:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate visualization. Please try again.' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+# Test Strategy:
+1. Test the API endpoint with valid input data
+2. Test with missing or invalid input data
+3. Test error handling for OpenAI API failures
+4. Verify the prompt construction logic
+5. Test response format and structure
+6. Implement mocking for OpenAI API in test environment
+7. Verify rate limiting and error handling

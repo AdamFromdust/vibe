@@ -1,0 +1,66 @@
+# Task ID: 2
+# Title: Implement Geolocation Service
+# Status: done
+# Dependencies: 1
+# Priority: medium
+# Description: Create a service to detect the user's location using the Browser Geolocation API with a fallback to 'in a faraway land' when location cannot be determined.
+# Details:
+1. Create a utility function to access the Browser Geolocation API
+2. Implement permission handling for location access
+3. Extract relevant location information (city, country) from coordinates
+4. Implement the fallback mechanism to use 'in a faraway land' when location is unavailable
+5. Handle potential errors and timeouts gracefully
+
+Code example:
+```tsx
+export async function getUserLocation(): Promise<string> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve('in a faraway land');
+      return;
+    }
+    
+    const successCallback = async (position: GeolocationPosition) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        // Use reverse geocoding to get location name
+        // This is a simplified example - in production, you might use a geocoding service
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`
+        );
+        
+        if (!response.ok) throw new Error('Geocoding failed');
+        
+        const data = await response.json();
+        const location = data.address?.city || data.address?.town || data.address?.state || data.address?.country;
+        
+        resolve(location || 'in a faraway land');
+      } catch (error) {
+        console.error('Error getting location name:', error);
+        resolve('in a faraway land');
+      }
+    };
+    
+    const errorCallback = () => {
+      resolve('in a faraway land');
+    };
+    
+    navigator.geolocation.getCurrentPosition(
+      successCallback,
+      errorCallback,
+      { timeout: 5000 }
+    );
+    
+    // Set a timeout as additional fallback
+    setTimeout(() => resolve('in a faraway land'), 6000);
+  });
+}
+```
+
+# Test Strategy:
+1. Test the geolocation function with browser permissions granted
+2. Test with browser permissions denied
+3. Test with geolocation API timeout
+4. Verify the fallback mechanism works correctly
+5. Test error handling for various failure scenarios
+6. Mock the geolocation API for consistent testing

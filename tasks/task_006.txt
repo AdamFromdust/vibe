@@ -1,0 +1,70 @@
+# Task ID: 6
+# Title: Implement Text-to-Speech Functionality
+# Status: pending
+# Dependencies: 5
+# Priority: medium
+# Description: Develop the Text-to-Speech (TTS) feature using the Web Speech API to read the visualization text aloud when the 'Start visualization' button is clicked.
+# Details:
+1. Create a utility function to handle TTS using the Web Speech API
+2. Implement voice selection logic to prefer a female English voice
+3. Add fallback to default voice when preferred voice is unavailable
+4. Implement the start/restart functionality for the TTS playback
+5. Add basic error handling for TTS failures
+
+Code example:
+```tsx
+// lib/textToSpeech.ts
+export function speakText(text: string): void {
+  // Check if speech synthesis is available
+  if (!window.speechSynthesis) {
+    console.error('Speech synthesis not supported');
+    return;
+  }
+  
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel();
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  
+  // Try to find a female English voice
+  const voices = window.speechSynthesis.getVoices();
+  const femaleEnglishVoice = voices.find(voice => 
+    voice.lang.includes('en') && 
+    (voice.name.includes('female') || voice.name.includes('Female'))
+  );
+  
+  if (femaleEnglishVoice) {
+    utterance.voice = femaleEnglishVoice;
+  }
+  
+  // Set other properties
+  utterance.rate = 0.9; // Slightly slower for better comprehension
+  utterance.pitch = 1.0;
+  
+  // Error handling
+  utterance.onerror = (event) => {
+    console.error('TTS Error:', event);
+  };
+  
+  // Speak the text
+  window.speechSynthesis.speak(utterance);
+}
+
+// In the MagicButton component
+const handleStartVisualization = () => {
+  try {
+    speakText(visualizationText);
+  } catch (error) {
+    console.error('Failed to start speech:', error);
+    // Silently fail as per requirements - user can still read the text
+  }
+};
+```
+
+# Test Strategy:
+1. Test the TTS functionality in different browsers
+2. Verify voice selection logic works correctly
+3. Test the fallback to default voice
+4. Verify that clicking the button multiple times restarts the speech
+5. Test error handling for browsers without TTS support
+6. Verify the speech quality and pronunciation

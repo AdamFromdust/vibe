@@ -1,0 +1,58 @@
+# Task ID: 1
+# Title: Create Basic UI Layout and Components
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Develop the foundational page layout using Next.js and Shadcn/UI components, including the intro text display, dream input field, and 'Make the magic happen' button.
+# Details:
+1. Create a new Next.js page for the Magic Button feature
+2. Implement a clean, minimalist layout using Shadcn/UI components
+3. Add the static intro text as specified in the PRD: "Shhh... Can you hear it? The Magic Button has amplified your connection to your deepest aspirations..."
+4. Add a multi-line text input field using Shadcn/UI's `<Textarea>` component for users to enter their dream
+5. Add the 'Make the magic happen' button using Shadcn/UI's `<Button>` component
+6. Ensure the UI is responsive and works well on different screen sizes
+7. Implement state management for the dream input using React hooks
+8. Respect theming capabilities provided by `next-themes` for light/dark mode support
+
+Code example for the main component structure:
+```tsx
+'use client';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+
+export default function MagicButton() {
+  const [dreamInput, setDreamInput] = useState('');
+  
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <h1 className="text-3xl font-bold mb-6">Magic Button</h1>
+      
+      <div className="mb-8">
+        <p className="text-lg mb-4">
+          Shhh... Can you hear it? The Magic Button has amplified your connection to your deepest aspirations. Now it's your turn to speak. What's that one dream you've secretly cherished, the one you barely dared to admit even to yourself? Whisper it to us. Paint a picture with your words. Imagine you're describing it to the universe, and the universe is listening intently, ready to conspire in your favor. No dream is too big, too bold, or too 'out there.' Let your imagination run wild
+        </p>
+      </div>
+      
+      <Textarea
+        placeholder="Describe your dream here..."
+        className="min-h-32 mb-4"
+        value={dreamInput}
+        onChange={(e) => setDreamInput(e.target.value)}
+      />
+      
+      <Button className="w-full" size="lg">
+        Make the magic happen
+      </Button>
+    </div>
+  );
+}
+```
+
+# Test Strategy:
+1. Verify that all UI components render correctly
+2. Test responsive design on different screen sizes
+3. Validate that the text input field captures user input correctly
+4. Ensure the button is properly styled and clickable
+5. Verify that theming works correctly (light/dark mode)
+6. Test accessibility features (keyboard navigation, screen reader compatibility)

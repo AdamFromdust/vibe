@@ -1,0 +1,75 @@
+# Task ID: 8
+# Title: Implement Voice Loading and Initialization
+# Status: pending
+# Dependencies: 6
+# Priority: low
+# Description: Create a mechanism to preload and initialize speech synthesis voices to ensure they are available when needed for TTS.
+# Details:
+1. Create a utility to initialize and preload speech synthesis voices
+2. Handle the asynchronous nature of voice loading in different browsers
+3. Implement a mechanism to retry voice loading if it fails initially
+4. Add a small delay before TTS starts to ensure voices are loaded
+
+Code example:
+```tsx
+// lib/textToSpeech.ts
+let voicesLoaded = false;
+
+export function initVoices(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis) {
+      resolve(false);
+      return;
+    }
+    
+    // Check if voices are already loaded
+    if (window.speechSynthesis.getVoices().length > 0) {
+      voicesLoaded = true;
+      resolve(true);
+      return;
+    }
+    
+    // Set up event listener for when voices are loaded
+    const voicesChangedHandler = () => {
+      voicesLoaded = true;
+      resolve(true);
+      window.speechSynthesis.removeEventListener('voiceschanged', voicesChangedHandler);
+    };
+    
+    window.speechSynthesis.addEventListener('voiceschanged', voicesChangedHandler);
+    
+    // Set a timeout in case the event never fires
+    setTimeout(() => {
+      if (!voicesLoaded) {
+        // Try one more time to get voices directly
+        if (window.speechSynthesis.getVoices().length > 0) {
+          voicesLoaded = true;
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+        window.speechSynthesis.removeEventListener('voiceschanged', voicesChangedHandler);
+      }
+    }, 1000);
+  });
+}
+
+// In the MagicButton component, add useEffect to initialize voices
+import { useEffect } from 'react';
+import { initVoices } from '@/lib/textToSpeech';
+
+useEffect(() => {
+  initVoices().then(success => {
+    if (!success) {
+      console.warn('Failed to load TTS voices');
+    }
+  });
+}, []);
+```
+
+# Test Strategy:
+1. Test voice initialization in different browsers
+2. Verify that voices are correctly loaded and available
+3. Test the timeout and retry mechanism
+4. Verify that TTS works correctly after voice initialization
+5. Test fallback behavior when voices cannot be loaded

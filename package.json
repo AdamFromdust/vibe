@@ -11,8 +11,8 @@
   ],
   "author": "John Polacek",
   "scripts": {
-    "kill:ports": "kill-port 3000 4000 4400 4500 5001 8080 8085 9000 9099 9199 || true",
-    "dev": "pnpm kill:ports && concurrently \"pnpm convex:dev\" \"next dev\" --kill-others --names \"convex,next\" --prefix-colors \"yellow.bold,cyan.bold\"",
+    "kill:ports": "kill-port 3001 4000 4400 4500 5001 8080 8085 9000 9099 9199 || true",
+    "dev": "pnpm kill:ports && concurrently \"pnpm convex:dev\" \"next dev -p 3001\" --kill-others --names \"convex,next\" --prefix-colors \"yellow.bold,cyan.bold\"",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "build": "pnpm generate:routes && next build",
