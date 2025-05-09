@@ -1,6 +1,6 @@
 # Task ID: 6
 # Title: Implement Text-to-Speech Functionality
-# Status: pending
+# Status: done
 # Dependencies: 5
 # Priority: medium
 # Description: Develop the Text-to-Speech (TTS) feature using the Web Speech API to read the visualization text aloud when the 'Start visualization' button is clicked.

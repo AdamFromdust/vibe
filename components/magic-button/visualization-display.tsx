@@ -5,9 +5,16 @@ import { Button } from "@/components/ui/button";
 interface VisualizationDisplayProps {
     visualizationText: string;
     onStartVisualization: () => void;
+    isSpeaking?: boolean;
+    isLoadingSpeech?: boolean;
 }
 
-const VisualizationDisplay = ({ visualizationText, onStartVisualization }: VisualizationDisplayProps) => {
+const VisualizationDisplay = ({ 
+    visualizationText, 
+    onStartVisualization, 
+    isSpeaking, 
+    isLoadingSpeech 
+}: VisualizationDisplayProps) => {
     return (
         <div className="space-y-6 animate-fadeIn">
             <h2 className="text-3xl font-bold text-center tracking-tight text-gray-900 dark:text-gray-50">Your Personalized Visualization</h2>
@@ -28,9 +35,10 @@ const VisualizationDisplay = ({ visualizationText, onStartVisualization }: Visua
                         className="w-full max-w-xs px-8 py-4 text-lg font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
                         size="lg"
                         onClick={onStartVisualization}
-                        variant="default" // Or try "secondary", "ghost" etc. if "default" isn&apos;t defined or you prefer another style
+                        disabled={isSpeaking || isLoadingSpeech}
+                        variant="default"
                     >
-                        Start visualization
+                        {isLoadingSpeech ? 'Loading audio...' : (isSpeaking ? 'Stop Speech' : 'Start Visualization & Speech')}
                     </Button>
                 </div>
             </div>

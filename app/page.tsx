@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { getUserLocation } from '@/lib/services/geolocation-service';
 import VisualizationDisplay from '@/components/magic-button/visualization-display';
-import { speakText, cancelSpeech } from '@/lib/textToSpeech';
 
 export default function MagicButtonPage() {
   const [dreamInput, setDreamInput] = useState('');
@@ -14,9 +13,24 @@ export default function MagicButtonPage() {
   const [error, setError] = useState('');
   const [showVisualization, setShowVisualization] = useState(false);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const stopCurrentSpeech = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      if (audioRef.current.src && audioRef.current.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
+  };
+
   useEffect(() => {
     return () => {
-      cancelSpeech();
+      stopCurrentSpeech();
     };
   }, []);
 
@@ -30,6 +44,7 @@ export default function MagicButtonPage() {
     setIsLoading(true);
     setVisualizationText('');
     setShowVisualization(false);
+    stopCurrentSpeech();
 
     try {
       const location = await getUserLocation();
@@ -70,15 +85,64 @@ export default function MagicButtonPage() {
     }
   };
 
-  const handleStartVisualization = () => {
-    if (visualizationText) {
-      speakText(
-        visualizationText, 
-        () => { console.log('TTS finished.'); }, 
-        (event: SpeechSynthesisErrorEvent) => { console.error('TTS error during playback:', event); }
-      );
-    } else {
+  const handleStartVisualization = async () => {
+    if (!visualizationText) {
       console.warn('No visualization text to speak.');
+      return;
+    }
+    if (isSpeaking) {
+      stopCurrentSpeech();
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/ai/generate/speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: visualizationText, voice: 'nova' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to generate speech audio and could not parse error.'}));
+        throw new Error(errorData.error || 'Failed to generate speech audio.');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      stopCurrentSpeech();
+
+      audioRef.current = new Audio(audioUrl);
+      setIsSpeaking(true);
+
+      audioRef.current.onended = () => {
+        console.log('TTS finished.');
+        setIsSpeaking(false);
+        stopCurrentSpeech();
+      };
+      audioRef.current.onerror = (event) => {
+        console.error('TTS error during playback:', event);
+        setError('Error playing speech audio.');
+        setIsSpeaking(false);
+        stopCurrentSpeech();
+      };
+      
+      await audioRef.current.play();
+
+    } catch (err) {
+      console.error('Error in handleStartVisualization (fetching/playing speech):', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred while preparing speech.');
+      }
+      setIsSpeaking(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -99,7 +163,7 @@ export default function MagicButtonPage() {
             className="min-h-36 mb-6 w-full p-4 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-50"
             value={dreamInput}
             onChange={(e) => setDreamInput(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || isSpeaking}
             rows={5}
           />
 
@@ -109,9 +173,9 @@ export default function MagicButtonPage() {
             className="w-full px-8 py-4 text-lg font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
             size="lg"
             onClick={handleMagicButtonClick}
-            disabled={isLoading}
+            disabled={isLoading || isSpeaking}
           >
-            {isLoading ? 'Weaving your dream...' : 'Weave My Dream'}
+            {isLoading && !showVisualization ? 'Weaving your dream...' : (isSpeaking ? 'Speaking...' : 'Weave My Dream')}
           </Button>
         </div>
       ) : (
@@ -119,6 +183,8 @@ export default function MagicButtonPage() {
           <VisualizationDisplay
             visualizationText={visualizationText}
             onStartVisualization={handleStartVisualization}
+            isSpeaking={isSpeaking}
+            isLoadingSpeech={isLoading && showVisualization}
           />
           <Button
             className="w-full max-w-xs mt-8 px-8 py-4 text-lg font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-offset-gray-800"
@@ -129,8 +195,9 @@ export default function MagicButtonPage() {
               setDreamInput('');
               setError('');
               setVisualizationText('');
-              cancelSpeech();
+              stopCurrentSpeech();
             }}
+            disabled={isSpeaking || (isLoading && showVisualization)}
           >
             Dream Again
           </Button>
